@@ -1,0 +1,12 @@
+prefix=/Users/h-shn/Works/GitHub/OpenSSL/dest/armeabi
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: OpenSSL-libssl
+Description: Secure Sockets Layer and cryptography libraries
+Version: 1.0.2k-dev
+Requires.private: libcrypto
+Libs: -L${libdir} -lssl
+Libs.private: -ldl
+Cflags: -I${includedir} 
