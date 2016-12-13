@@ -53,12 +53,16 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
+    <TargetName>libgrpc_csharp_ext</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
+    <TargetName>libgrpc_csharp_ext</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
+    <TargetName>libgrpc_csharp_ext</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
+    <TargetName>libgrpc_csharp_ext</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
     <ClCompile>
@@ -67,7 +71,7 @@
       <AdditionalIncludeDirectories>$(Sysroot)\usr\include;$(SolutionDir)..;$(SolutionDir)..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>$(ProjectDir)..\third_party\openssl\x86\lib\libssl.a;$(ProjectDir)..\third_party\openssl\x86\lib\libcrypto.a;$(SolutionDir)$(Platform)\$(Configuration)\libgpr_android.a;$(SolutionDir)$(Platform)\$(Configuration)\libgrpc_android.a</AdditionalDependencies>
+      <AdditionalDependencies>$(ProjectDir)..\third_party\boringssl\x86\lib\libssl.a;$(ProjectDir)..\third_party\boringssl\x86\lib\libcrypto.a;$(SolutionDir)$(Platform)\$(Configuration)\libgpr_android.a;$(SolutionDir)$(Platform)\$(Configuration)\libgrpc_android.a</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories);$(ToolchainPrebuiltPath)\lib\gcc\i686-linux-android\$(ToolchainVersion);$(StlLibraryPath)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -78,7 +82,7 @@
       <AdditionalIncludeDirectories>$(Sysroot)\usr\include;$(SolutionDir)..;$(SolutionDir)..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>$(ProjectDir)..\third_party\openssl\x86\lib\libssl.a;$(ProjectDir)..\third_party\openssl\x86\lib\libcrypto.a;$(SolutionDir)$(Platform)\$(Configuration)\libgpr_android.a;$(SolutionDir)$(Platform)\$(Configuration)\libgrpc_android.a</AdditionalDependencies>
+      <AdditionalDependencies>$(ProjectDir)..\third_party\boringssl\x86\lib\libssl.a;$(ProjectDir)..\third_party\boringssl\x86\lib\libcrypto.a;$(SolutionDir)$(Platform)\$(Configuration)\libgpr_android.a;$(SolutionDir)$(Platform)\$(Configuration)\libgrpc_android.a</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
@@ -88,7 +92,7 @@
       <AdditionalIncludeDirectories>$(Sysroot)\usr\include;$(SolutionDir)..;$(SolutionDir)..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>$(ProjectDir)..\third_party\openssl\armeabi-v7a\lib\libssl.a;$(ProjectDir)..\third_party\openssl\armeabi-v7a\lib\libcrypto.a;$(SolutionDir)$(Platform)\$(Configuration)\libgpr_android.a;$(SolutionDir)$(Platform)\$(Configuration)\libgrpc_android.a</AdditionalDependencies>
+      <AdditionalDependencies>$(ProjectDir)..\third_party\boringssl\armeabi-v7a\lib\libssl.a;$(ProjectDir)..\third_party\boringssl\armeabi-v7a\lib\libcrypto.a;$(SolutionDir)$(Platform)\$(Configuration)\libgpr_android.a;$(SolutionDir)$(Platform)\$(Configuration)\libgrpc_android.a</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);$(ToolchainPrebuiltPath)\lib\gcc\$(ToolchainName)\$(ToolchainVersion)\$(PlatformShortName);$(StlLibraryPath)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -99,7 +103,7 @@
       <AdditionalIncludeDirectories>$(Sysroot)\usr\include;$(SolutionDir)..;$(SolutionDir)..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>$(ProjectDir)..\third_party\openssl\armeabi-v7a\lib\libssl.a;$(ProjectDir)..\third_party\openssl\armeabi-v7a\lib\libcrypto.a;$(SolutionDir)$(Platform)\$(Configuration)\libgpr_android.a;$(SolutionDir)$(Platform)\$(Configuration)\libgrpc_android.a</AdditionalDependencies>
+      <AdditionalDependencies>$(ProjectDir)..\third_party\boringssl\armeabi-v7a\lib\libssl.a;$(ProjectDir)..\third_party\boringssl\armeabi-v7a\lib\libcrypto.a;$(SolutionDir)$(Platform)\$(Configuration)\libgpr_android.a;$(SolutionDir)$(Platform)\$(Configuration)\libgrpc_android.a</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
