@@ -69,10 +69,11 @@ cd "$current_dir/xcprojects/grpc_csharp_ext_ios"
 rm -dfr "$work_dir"
 mkdir -p "$work_dir"
 
+pod install
 xcodebuild -workspace grpc_csharp_ext.xcworkspace -scheme grpc_csharp_ext -configuration $BUILD_TYPE -derivedDataPath "$work_dir" clean build
 
 rm -dfr "$OUTPUT_DIR/iOS"
 mkdir -p "$OUTPUT_DIR/iOS"
-cp "$work_dir/Build/Products/Release-iphoneos/libgrpc_csharp_ext.a" "$OUTPUT_DIR/iOS/"
-cp "$work_dir/Build/Products/Release-iphoneos/gRPC-Core/libgRPC-Core.a" "$OUTPUT_DIR/iOS/"
-cp "$work_dir/Build/Products/Release-iphoneos/BoringSSL/libBoringSSL.a" "$OUTPUT_DIR/iOS/"
+cp "./$work_dir/Build/Products/Release-iphoneos/libgrpc_csharp_ext.a" "$OUTPUT_DIR/iOS/"
+cp "./$work_dir/Build/Products/Release-iphoneos/gRPC-Core/libgRPC-Core.a" "$OUTPUT_DIR/iOS/"
+cp "./$work_dir/Build/Products/Release-iphoneos/BoringSSL/libBoringSSL.a" "$OUTPUT_DIR/iOS/"
