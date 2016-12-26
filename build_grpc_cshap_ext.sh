@@ -14,6 +14,7 @@ then
   exit 1
 fi
 
+mkdir -p "$1"
 OUTPUT_DIR=$(cd $1 && pwd)
 BUILD_TYPE=$2
 
