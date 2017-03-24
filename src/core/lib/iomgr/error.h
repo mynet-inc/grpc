@@ -37,7 +37,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include <grpc/slice.h>
 #include <grpc/status.h>
 #include <grpc/support/time.h>
 
@@ -160,13 +159,7 @@ grpc_error *grpc_error_create(const char *file, int line, const char *desc,
 ///   for (i=0; i<nr; i++) err = grpc_error_add_child(err, r[i]);
 #define GRPC_ERROR_CREATE(desc) \
   grpc_error_create(__FILE__, __LINE__, desc, NULL, 0)
-#define GRPC_ERROR_CREATE_FROM_STATIC_STRING(desc)                     \
-  grpc_error_create(grpc_slice_from_static_string(__FILE__), __LINE__, \
-                    grpc_slice_from_static_string(desc), NULL, 0)
-#define GRPC_ERROR_CREATE_FROM_COPIED_STRING(desc)                     \
-  grpc_error_create(grpc_slice_from_static_string(__FILE__), __LINE__, \
-                    grpc_slice_from_copied_string(desc), NULL, 0)
-                   
+
 // Create an error that references some other errors. This function adds a
 // reference to each error in errs - it does not consume an existing reference
 #define GRPC_ERROR_CREATE_REFERENCING(desc, errs, count) \
