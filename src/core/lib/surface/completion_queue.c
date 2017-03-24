@@ -343,7 +343,8 @@ static void dump_pending_tags(grpc_completion_queue *cc) {}
 #endif
 
 grpc_event grpc_completion_queue_next(grpc_completion_queue *cc,
-                                      gpr_timespec deadline, void *reserved) {
+                                      gpr_timespec deadline, void *reserved,
+                                      magic_for_debug_callback_funcptr callback) {
   grpc_event ret;
   grpc_pollset_worker *worker = NULL;
   gpr_timespec now;
@@ -377,6 +378,10 @@ grpc_event grpc_completion_queue_next(grpc_completion_queue *cc,
   grpc_exec_ctx exec_ctx =
       GRPC_EXEC_CTX_INITIALIZER(0, cq_is_next_finished, &is_finished_arg);
   for (;;) {
+	if (callback != NULL) {
+		callback();
+	}
+
     if (is_finished_arg.stolen_completion != NULL) {
       gpr_mu_unlock(cc->mu);
       grpc_cq_completion *c = is_finished_arg.stolen_completion;

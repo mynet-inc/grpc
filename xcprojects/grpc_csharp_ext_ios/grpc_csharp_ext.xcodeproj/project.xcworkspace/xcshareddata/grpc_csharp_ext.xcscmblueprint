@@ -1,0 +1,30 @@
+{
+  "DVTSourceControlWorkspaceBlueprintPrimaryRemoteRepositoryKey" : "8B06E12A8BC7ADE97BC9AAF1FFA2035EEC0C9610",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyRepositoryLocationsKey" : {
+
+  },
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyStatesKey" : {
+    "8B06E12A8BC7ADE97BC9AAF1FFA2035EEC0C9610" : 9223372036854775807,
+    "8601E67F4FB64BCEBC94AD8912DA48EAE2F25B48" : 9223372036854775807
+  },
+  "DVTSourceControlWorkspaceBlueprintIdentifierKey" : "ED4C6DCE-BD26-423F-BC87-57F5C6D17195",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyPathsKey" : {
+    "8B06E12A8BC7ADE97BC9AAF1FFA2035EEC0C9610" : "grpc\/",
+    "8601E67F4FB64BCEBC94AD8912DA48EAE2F25B48" : "grpc\/third_party\/zlib\/"
+  },
+  "DVTSourceControlWorkspaceBlueprintNameKey" : "grpc_csharp_ext",
+  "DVTSourceControlWorkspaceBlueprintVersion" : 204,
+  "DVTSourceControlWorkspaceBlueprintRelativePathToProjectKey" : "xcprojects\/grpc_csharp_ext_ios\/grpc_csharp_ext.xcodeproj",
+  "DVTSourceControlWorkspaceBlueprintRemoteRepositoriesKey" : [
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/madler\/zlib",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "8601E67F4FB64BCEBC94AD8912DA48EAE2F25B48"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/grani\/grpc",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "8B06E12A8BC7ADE97BC9AAF1FFA2035EEC0C9610"
+    }
+  ]
+}
