@@ -47,6 +47,7 @@
 
 #include "src/core/lib/iomgr/error_internal.h"
 #include "src/core/lib/profiling/timers.h"
+#include "src/core/lib/slice/slice_internal.h"
 
 static void destroy_integer(void *key) {}
 
@@ -120,6 +121,8 @@ static const char *error_int_name(grpc_error_ints key) {
       return "limit";
     case GRPC_ERROR_INT_OCCURRED_DURING_WRITE:
       return "occurred_during_write";
+    case GRPC_ERROR_INT_MAX:
+      GPR_UNREACHABLE_CODE(return "unknown");
   }
   GPR_UNREACHABLE_CODE(return "unknown");
 }
@@ -150,6 +153,8 @@ static const char *error_str_name(grpc_error_strs key) {
       return "filename";
     case GRPC_ERROR_STR_QUEUED_BUFFERS:
       return "queued_buffers";
+    case GRPC_ERROR_STR_MAX:
+      GPR_UNREACHABLE_CODE(return "unknown");
   }
   GPR_UNREACHABLE_CODE(return "unknown");
 }
@@ -158,6 +163,8 @@ static const char *error_time_name(grpc_error_times key) {
   switch (key) {
     case GRPC_ERROR_TIME_CREATED:
       return "created";
+    case GRPC_ERROR_TIME_MAX:
+      GPR_UNREACHABLE_CODE(return "unknown");
   }
   GPR_UNREACHABLE_CODE(return "unknown");
 }
@@ -243,6 +250,64 @@ grpc_error *grpc_error_create(const char *file, int line, const char *desc,
                            box_time(gpr_now(GPR_CLOCK_REALTIME)));
   gpr_atm_no_barrier_store(&err->error_string, 0);
   gpr_ref_init(&err->refs, 1);
+  GPR_TIMER_END("grpc_error_create", 0);
+  return err;
+}
+
+#define SLOTS_PER_INT (sizeof(intptr_t) / sizeof(intptr_t))
+#define SLOTS_PER_STR (sizeof(grpc_slice) / sizeof(intptr_t))
+#define SLOTS_PER_TIME (sizeof(gpr_timespec) / sizeof(intptr_t))
+#define SLOTS_PER_LINKED_ERROR (sizeof(grpc_linked_error) / sizeof(intptr_t))
+
+// size of storing one int and two slices and a timespec. For line, desc, file,
+// and time created
+#define DEFAULT_ERROR_CAPACITY \
+  (SLOTS_PER_INT + (SLOTS_PER_STR * 2) + SLOTS_PER_TIME)
+
+// It is very common to include and extra int and string in an error
+#define SURPLUS_CAPACITY (2 * SLOTS_PER_INT + SLOTS_PER_TIME)
+
+grpc_error *grpc_error_create_slice(grpc_slice file, int line, grpc_slice desc,
+                              grpc_error **referencing,
+                              size_t num_referencing) {
+  GPR_TIMER_BEGIN("grpc_error_create", 0);
+  uint8_t initial_arena_capacity = (uint8_t)(
+      DEFAULT_ERROR_CAPACITY +
+      (uint8_t)(num_referencing * SLOTS_PER_LINKED_ERROR) + SURPLUS_CAPACITY);
+  grpc_error *err =
+      gpr_malloc(sizeof(*err) + initial_arena_capacity * sizeof(intptr_t));
+  if (err == NULL) {  // TODO(ctiller): make gpr_malloc return NULL
+    return GRPC_ERROR_OOM;
+  }
+#ifdef GRPC_ERROR_REFCOUNT_DEBUG
+  gpr_log(GPR_DEBUG, "%p create [%s:%d]", err, file, line);
+#endif
+
+  err->arena_size = 0;
+  err->arena_capacity = initial_arena_capacity;
+  err->first_err = UINT8_MAX;
+  err->last_err = UINT8_MAX;
+
+  memset(err->ints, UINT8_MAX, GRPC_ERROR_INT_MAX);
+  memset(err->strs, UINT8_MAX, GRPC_ERROR_STR_MAX);
+  memset(err->times, UINT8_MAX, GRPC_ERROR_TIME_MAX);
+
+  internal_set_int(&err, GRPC_ERROR_INT_FILE_LINE, line);
+  internal_set_str(&err, GRPC_ERROR_STR_FILE, file);
+  internal_set_str(&err, GRPC_ERROR_STR_DESCRIPTION, desc);
+
+  for (size_t i = 0; i < num_referencing; ++i) {
+    if (referencing[i] == GRPC_ERROR_NONE) continue;
+    internal_add_error(
+        &err,
+        GRPC_ERROR_REF(
+            referencing[i]));  // TODO(ncteisen), change ownership semantics
+  }
+
+  internal_set_time(&err, GRPC_ERROR_TIME_CREATED, gpr_now(GPR_CLOCK_REALTIME));
+
+  gpr_atm_no_barrier_store(&err->atomics.error_string, 0);
+  gpr_ref_init(&err->atomics.refs, 1);
   GPR_TIMER_END("grpc_error_create", 0);
   return err;
 }
