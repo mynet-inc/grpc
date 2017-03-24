@@ -103,9 +103,6 @@ typedef enum {
   GRPC_ERROR_INT_LIMIT,
   /// chttp2: did the error occur while a write was in progress
   GRPC_ERROR_INT_OCCURRED_DURING_WRITE,
-
-  /// Must always be last
-  GRPC_ERROR_INT_MAX,
 } grpc_error_ints;
 
 typedef enum {
@@ -133,17 +130,11 @@ typedef enum {
   GRPC_ERROR_STR_KEY,
   /// value associated with the error
   GRPC_ERROR_STR_VALUE,
-
-  /// Must always be last
-  GRPC_ERROR_STR_MAX,
 } grpc_error_strs;
 
 typedef enum {
   /// timestamp of error creation
   GRPC_ERROR_TIME_CREATED,
-
-  /// Must always be last
-  GRPC_ERROR_TIME_MAX,
 } grpc_error_times;
 
 /// The following "special" errors can be propagated without allocating memory.
@@ -159,8 +150,6 @@ const char *grpc_error_string(grpc_error *error);
 /// Create an error - but use GRPC_ERROR_CREATE instead
 grpc_error *grpc_error_create(const char *file, int line, const char *desc,
                               grpc_error **referencing, size_t num_referencing);
-grpc_error *grpc_error_create_slice(grpc_slice file, int line, grpc_slice desc,
-                              grpc_error **referencing, size_t num_referencing);
 /// Create an error (this is the preferred way of generating an error that is
 ///   not due to a system call - for system calls, use GRPC_OS_ERROR or
 ///   GRPC_WSA_ERROR as appropriate)
@@ -172,10 +161,10 @@ grpc_error *grpc_error_create_slice(grpc_slice file, int line, grpc_slice desc,
 #define GRPC_ERROR_CREATE(desc) \
   grpc_error_create(__FILE__, __LINE__, desc, NULL, 0)
 #define GRPC_ERROR_CREATE_FROM_STATIC_STRING(desc)                     \
-  grpc_error_create_slice(grpc_slice_from_static_string(__FILE__), __LINE__, \
+  grpc_error_create(grpc_slice_from_static_string(__FILE__), __LINE__, \
                     grpc_slice_from_static_string(desc), NULL, 0)
 #define GRPC_ERROR_CREATE_FROM_COPIED_STRING(desc)                     \
-  grpc_error_create_slice(grpc_slice_from_static_string(__FILE__), __LINE__, \
+  grpc_error_create(grpc_slice_from_static_string(__FILE__), __LINE__, \
                     grpc_slice_from_copied_string(desc), NULL, 0)
                    
 // Create an error that references some other errors. This function adds a
