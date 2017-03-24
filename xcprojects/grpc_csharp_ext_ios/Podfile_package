@@ -6,6 +6,6 @@ target 'grpc_csharp_ext' do
   # use_frameworks!
 
   # Pods for grpc_csharp_ext
-  pod 'gRPC-Core', '~> 1.0'
+  pod 'gRPC-Core', '~> 1.2'
 
 end

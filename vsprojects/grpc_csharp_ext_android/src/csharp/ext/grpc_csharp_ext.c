@@ -105,15 +105,13 @@ typedef struct grpcsharp_batch_context {
   grpc_byte_buffer *send_message;
   struct {
     grpc_metadata_array trailing_metadata;
-    char *status_details;
   } send_status_from_server;
   grpc_metadata_array recv_initial_metadata;
   grpc_byte_buffer *recv_message;
   struct {
     grpc_metadata_array trailing_metadata;
     grpc_status_code status;
-    char *status_details;
-    size_t status_details_capacity;
+    grpc_slice status_details;
   } recv_status_on_client;
   int recv_close_on_server_cancelled;
 } grpcsharp_batch_context;
@@ -154,8 +152,8 @@ void grpcsharp_metadata_array_destroy_metadata_including_entries(
   size_t i;
   if (array->metadata) {
     for (i = 0; i < array->count; i++) {
-      gpr_free((void *)array->metadata[i].key);
-      gpr_free((void *)array->metadata[i].value);
+      grpc_slice_unref(array->metadata[i].key);
+      grpc_slice_unref(array->metadata[i].value);
     }
   }
   gpr_free(array->metadata);
@@ -199,10 +197,8 @@ grpcsharp_metadata_array_add(grpc_metadata_array *array, const char *key,
                              const char *value, size_t value_length) {
   size_t i = array->count;
   GPR_ASSERT(array->count < array->capacity);
-  array->metadata[i].key = gpr_strdup(key);
-  array->metadata[i].value = (char *)gpr_malloc(value_length);
-  memcpy((void *)array->metadata[i].value, value, value_length);
-  array->metadata[i].value_length = value_length;
+  array->metadata[i].key = grpc_slice_from_copied_string(key);
+  array->metadata[i].value = grpc_slice_from_copied_buffer(value, value_length);
   array->count++;
 }
 
@@ -212,21 +208,17 @@ grpcsharp_metadata_array_count(grpc_metadata_array *array) {
 }
 
 GPR_EXPORT const char *GPR_CALLTYPE
-grpcsharp_metadata_array_get_key(grpc_metadata_array *array, size_t index) {
+grpcsharp_metadata_array_get_key(grpc_metadata_array *array, size_t index, size_t *key_length) {
   GPR_ASSERT(index < array->count);
-  return array->metadata[index].key;
+  *key_length = GRPC_SLICE_LENGTH(array->metadata[index].key);
+  return (char *)GRPC_SLICE_START_PTR(array->metadata[index].key);
 }
 
 GPR_EXPORT const char *GPR_CALLTYPE
-grpcsharp_metadata_array_get_value(grpc_metadata_array *array, size_t index) {
+grpcsharp_metadata_array_get_value(grpc_metadata_array *array, size_t index, size_t *value_length) {
   GPR_ASSERT(index < array->count);
-  return array->metadata[index].value;
-}
-
-GPR_EXPORT intptr_t GPR_CALLTYPE grpcsharp_metadata_array_get_value_length(
-    grpc_metadata_array *array, size_t index) {
-  GPR_ASSERT(index < array->count);
-  return (intptr_t)array->metadata[index].value_length;
+  *value_length = GRPC_SLICE_LENGTH(array->metadata[index].value);
+  return (char *)GRPC_SLICE_START_PTR(array->metadata[index].value);
 }
 
 /* Move contents of metadata array */
@@ -259,7 +251,6 @@ GPR_EXPORT void GPR_CALLTYPE grpcsharp_batch_context_destroy(grpcsharp_batch_con
 
   grpcsharp_metadata_array_destroy_metadata_including_entries(
       &(ctx->send_status_from_server.trailing_metadata));
-  gpr_free(ctx->send_status_from_server.status_details);
 
   grpcsharp_metadata_array_destroy_metadata_only(&(ctx->recv_initial_metadata));
 
@@ -267,7 +258,7 @@ GPR_EXPORT void GPR_CALLTYPE grpcsharp_batch_context_destroy(grpcsharp_batch_con
 
   grpcsharp_metadata_array_destroy_metadata_only(
       &(ctx->recv_status_on_client.trailing_metadata));
-  gpr_free((void *)ctx->recv_status_on_client.status_details);
+  grpc_slice_unref(ctx->recv_status_on_client.status_details);
 
   gpr_free(ctx);
 }
@@ -339,8 +330,9 @@ grpcsharp_batch_context_recv_status_on_client_status(
 
 GPR_EXPORT const char *GPR_CALLTYPE
 grpcsharp_batch_context_recv_status_on_client_details(
-    const grpcsharp_batch_context *ctx) {
-  return ctx->recv_status_on_client.status_details;
+    const grpcsharp_batch_context *ctx, size_t *details_length) {
+  *details_length = GRPC_SLICE_LENGTH(ctx->recv_status_on_client.status_details);
+  return (char *)GRPC_SLICE_START_PTR(ctx->recv_status_on_client.status_details);
 }
 
 GPR_EXPORT const grpc_metadata_array *GPR_CALLTYPE
@@ -356,13 +348,15 @@ GPR_EXPORT grpc_call *GPR_CALLTYPE grpcsharp_request_call_context_call(
 
 GPR_EXPORT const char *GPR_CALLTYPE
 grpcsharp_request_call_context_method(
-    const grpcsharp_request_call_context *ctx) {
-  return ctx->call_details.method;
+    const grpcsharp_request_call_context *ctx, size_t *method_length) {
+  *method_length = GRPC_SLICE_LENGTH(ctx->call_details.method);
+  return (char *)GRPC_SLICE_START_PTR(ctx->call_details.method);
 }
 
 GPR_EXPORT const char *GPR_CALLTYPE grpcsharp_request_call_context_host(
-    const grpcsharp_request_call_context *ctx) {
-  return ctx->call_details.host;
+    const grpcsharp_request_call_context *ctx, size_t *host_length) {
+  *host_length = GRPC_SLICE_LENGTH(ctx->call_details.host);
+  return (char *)GRPC_SLICE_START_PTR(ctx->call_details.host);
 }
 
 GPR_EXPORT gpr_timespec GPR_CALLTYPE
@@ -408,8 +402,14 @@ grpcsharp_completion_queue_destroy(grpc_completion_queue *cq) {
 
 GPR_EXPORT grpc_event GPR_CALLTYPE
 grpcsharp_completion_queue_next(grpc_completion_queue *cq) {
-  return grpc_completion_queue_next(cq, gpr_inf_future(GPR_CLOCK_REALTIME),
-                                    NULL);
+	return grpc_completion_queue_next(cq, gpr_inf_future(GPR_CLOCK_REALTIME),
+		NULL, NULL);
+}
+
+GPR_EXPORT grpc_event GPR_CALLTYPE
+grpcsharp_completion_queue_next_debuggable(grpc_completion_queue *cq, magic_for_debug_callback_funcptr callback) {
+	return grpc_completion_queue_next(cq, gpr_inf_future(GPR_CLOCK_REALTIME),
+		NULL, callback);
 }
 
 GPR_EXPORT grpc_event GPR_CALLTYPE
@@ -436,8 +436,15 @@ grpcsharp_channel_create_call(grpc_channel *channel, grpc_call *parent_call,
                               grpc_completion_queue *cq,
                               const char *method, const char *host,
                               gpr_timespec deadline) {
+  grpc_slice method_slice = grpc_slice_from_copied_string(method);
+  grpc_slice *host_slice_ptr = NULL;
+  grpc_slice host_slice;
+  if (host != NULL) {
+    host_slice = grpc_slice_from_copied_string(host);
+    host_slice_ptr = &host_slice;
+  }
   return grpc_channel_create_call(channel, parent_call, propagation_mask, cq,
-                                  method, host, deadline, NULL);
+                                  method_slice, host_slice_ptr, deadline, NULL);
 }
 
 GPR_EXPORT grpc_connectivity_state GPR_CALLTYPE
@@ -553,8 +560,8 @@ GPR_EXPORT void GPR_CALLTYPE grpcsharp_call_destroy(grpc_call *call) {
 
 GPR_EXPORT grpc_call_error GPR_CALLTYPE
 grpcsharp_call_start_unary(grpc_call *call, grpcsharp_batch_context *ctx,
-                           const char *send_buffer, size_t send_buffer_len,
-                           grpc_metadata_array *initial_metadata, uint32_t write_flags) {
+                           const char *send_buffer, size_t send_buffer_len, uint32_t write_flags,
+                           grpc_metadata_array *initial_metadata, uint32_t initial_metadata_flags) {
   /* TODO: don't use magic number */
   grpc_op ops[6];
   memset(ops, 0, sizeof(ops));
@@ -564,12 +571,12 @@ grpcsharp_call_start_unary(grpc_call *call, grpcsharp_batch_context *ctx,
   ops[0].data.send_initial_metadata.count = ctx->send_initial_metadata.count;
   ops[0].data.send_initial_metadata.metadata =
       ctx->send_initial_metadata.metadata;
-  ops[0].flags = 0;
+  ops[0].flags = initial_metadata_flags;
   ops[0].reserved = NULL;
 
   ops[1].op = GRPC_OP_SEND_MESSAGE;
   ctx->send_message = string_to_byte_buffer(send_buffer, send_buffer_len);
-  ops[1].data.send_message = ctx->send_message;
+  ops[1].data.send_message.send_message = ctx->send_message;
   ops[1].flags = write_flags;
   ops[1].reserved = NULL;
 
@@ -578,12 +585,13 @@ grpcsharp_call_start_unary(grpc_call *call, grpcsharp_batch_context *ctx,
   ops[2].reserved = NULL;
 
   ops[3].op = GRPC_OP_RECV_INITIAL_METADATA;
-  ops[3].data.recv_initial_metadata = &(ctx->recv_initial_metadata);
+  ops[3].data.recv_initial_metadata.recv_initial_metadata =
+      &(ctx->recv_initial_metadata);
   ops[3].flags = 0;
   ops[3].reserved = NULL;
 
   ops[4].op = GRPC_OP_RECV_MESSAGE;
-  ops[4].data.recv_message = &(ctx->recv_message);
+  ops[4].data.recv_message.recv_message = &(ctx->recv_message);
   ops[4].flags = 0;
   ops[4].reserved = NULL;
 
@@ -592,11 +600,8 @@ grpcsharp_call_start_unary(grpc_call *call, grpcsharp_batch_context *ctx,
       &(ctx->recv_status_on_client.trailing_metadata);
   ops[5].data.recv_status_on_client.status =
       &(ctx->recv_status_on_client.status);
-  /* not using preallocation for status_details */
   ops[5].data.recv_status_on_client.status_details =
       &(ctx->recv_status_on_client.status_details);
-  ops[5].data.recv_status_on_client.status_details_capacity =
-      &(ctx->recv_status_on_client.status_details_capacity);
   ops[5].flags = 0;
   ops[5].reserved = NULL;
 
@@ -607,7 +612,8 @@ grpcsharp_call_start_unary(grpc_call *call, grpcsharp_batch_context *ctx,
 GPR_EXPORT grpc_call_error GPR_CALLTYPE
 grpcsharp_call_start_client_streaming(grpc_call *call,
                                       grpcsharp_batch_context *ctx,
-                                      grpc_metadata_array *initial_metadata) {
+                                      grpc_metadata_array *initial_metadata,
+                                      uint32_t initial_metadata_flags) {
   /* TODO: don't use magic number */
   grpc_op ops[4];
   memset(ops, 0, sizeof(ops));
@@ -617,16 +623,17 @@ grpcsharp_call_start_client_streaming(grpc_call *call,
   ops[0].data.send_initial_metadata.count = ctx->send_initial_metadata.count;
   ops[0].data.send_initial_metadata.metadata =
       ctx->send_initial_metadata.metadata;
-  ops[0].flags = 0;
+  ops[0].flags = initial_metadata_flags;
   ops[0].reserved = NULL;
 
   ops[1].op = GRPC_OP_RECV_INITIAL_METADATA;
-  ops[1].data.recv_initial_metadata = &(ctx->recv_initial_metadata);
+  ops[1].data.recv_initial_metadata.recv_initial_metadata =
+      &(ctx->recv_initial_metadata);
   ops[1].flags = 0;
   ops[1].reserved = NULL;
 
   ops[2].op = GRPC_OP_RECV_MESSAGE;
-  ops[2].data.recv_message = &(ctx->recv_message);
+  ops[2].data.recv_message.recv_message = &(ctx->recv_message);
   ops[2].flags = 0;
   ops[2].reserved = NULL;
 
@@ -635,11 +642,8 @@ grpcsharp_call_start_client_streaming(grpc_call *call,
       &(ctx->recv_status_on_client.trailing_metadata);
   ops[3].data.recv_status_on_client.status =
       &(ctx->recv_status_on_client.status);
-  /* not using preallocation for status_details */
   ops[3].data.recv_status_on_client.status_details =
       &(ctx->recv_status_on_client.status_details);
-  ops[3].data.recv_status_on_client.status_details_capacity =
-      &(ctx->recv_status_on_client.status_details_capacity);
   ops[3].flags = 0;
   ops[3].reserved = NULL;
 
@@ -649,7 +653,8 @@ grpcsharp_call_start_client_streaming(grpc_call *call,
 
 GPR_EXPORT grpc_call_error GPR_CALLTYPE grpcsharp_call_start_server_streaming(
     grpc_call *call, grpcsharp_batch_context *ctx, const char *send_buffer,
-    size_t send_buffer_len, grpc_metadata_array *initial_metadata, uint32_t write_flags) {
+    size_t send_buffer_len, uint32_t write_flags,
+    grpc_metadata_array *initial_metadata, uint32_t initial_metadata_flags) {
   /* TODO: don't use magic number */
   grpc_op ops[4];
   memset(ops, 0, sizeof(ops));
@@ -659,12 +664,12 @@ GPR_EXPORT grpc_call_error GPR_CALLTYPE grpcsharp_call_start_server_streaming(
   ops[0].data.send_initial_metadata.count = ctx->send_initial_metadata.count;
   ops[0].data.send_initial_metadata.metadata =
       ctx->send_initial_metadata.metadata;
-  ops[0].flags = 0;
+  ops[0].flags = initial_metadata_flags;
   ops[0].reserved = NULL;
 
   ops[1].op = GRPC_OP_SEND_MESSAGE;
   ctx->send_message = string_to_byte_buffer(send_buffer, send_buffer_len);
-  ops[1].data.send_message = ctx->send_message;
+  ops[1].data.send_message.send_message = ctx->send_message;
   ops[1].flags = write_flags;
   ops[1].reserved = NULL;
 
@@ -677,11 +682,8 @@ GPR_EXPORT grpc_call_error GPR_CALLTYPE grpcsharp_call_start_server_streaming(
       &(ctx->recv_status_on_client.trailing_metadata);
   ops[3].data.recv_status_on_client.status =
       &(ctx->recv_status_on_client.status);
-  /* not using preallocation for status_details */
   ops[3].data.recv_status_on_client.status_details =
       &(ctx->recv_status_on_client.status_details);
-  ops[3].data.recv_status_on_client.status_details_capacity =
-      &(ctx->recv_status_on_client.status_details_capacity);
   ops[3].flags = 0;
   ops[3].reserved = NULL;
 
@@ -692,7 +694,8 @@ GPR_EXPORT grpc_call_error GPR_CALLTYPE grpcsharp_call_start_server_streaming(
 GPR_EXPORT grpc_call_error GPR_CALLTYPE
 grpcsharp_call_start_duplex_streaming(grpc_call *call,
                                       grpcsharp_batch_context *ctx,
-                                      grpc_metadata_array *initial_metadata) {
+                                      grpc_metadata_array *initial_metadata,
+                                      uint32_t initial_metadata_flags) {
   /* TODO: don't use magic number */
   grpc_op ops[2];
   memset(ops, 0, sizeof(ops));
@@ -702,7 +705,7 @@ grpcsharp_call_start_duplex_streaming(grpc_call *call,
   ops[0].data.send_initial_metadata.count = ctx->send_initial_metadata.count;
   ops[0].data.send_initial_metadata.metadata =
       ctx->send_initial_metadata.metadata;
-  ops[0].flags = 0;
+  ops[0].flags = initial_metadata_flags;
   ops[0].reserved = NULL;
 
   ops[1].op = GRPC_OP_RECV_STATUS_ON_CLIENT;
@@ -710,11 +713,8 @@ grpcsharp_call_start_duplex_streaming(grpc_call *call,
       &(ctx->recv_status_on_client.trailing_metadata);
   ops[1].data.recv_status_on_client.status =
       &(ctx->recv_status_on_client.status);
-  /* not using preallocation for status_details */
   ops[1].data.recv_status_on_client.status_details =
       &(ctx->recv_status_on_client.status_details);
-  ops[1].data.recv_status_on_client.status_details_capacity =
-      &(ctx->recv_status_on_client.status_details_capacity);
   ops[1].flags = 0;
   ops[1].reserved = NULL;
 
@@ -727,7 +727,8 @@ GPR_EXPORT grpc_call_error GPR_CALLTYPE grpcsharp_call_recv_initial_metadata(
   /* TODO: don't use magic number */
   grpc_op ops[1];
   ops[0].op = GRPC_OP_RECV_INITIAL_METADATA;
-  ops[0].data.recv_initial_metadata = &(ctx->recv_initial_metadata);
+  ops[0].data.recv_initial_metadata.recv_initial_metadata =
+      &(ctx->recv_initial_metadata);
   ops[0].flags = 0;
   ops[0].reserved = NULL;
 
@@ -746,7 +747,7 @@ grpcsharp_call_send_message(grpc_call *call, grpcsharp_batch_context *ctx,
   size_t nops = send_empty_initial_metadata ? 2 : 1;
   ops[0].op = GRPC_OP_SEND_MESSAGE;
   ctx->send_message = string_to_byte_buffer(send_buffer, send_buffer_len);
-  ops[0].data.send_message = ctx->send_message;
+  ops[0].data.send_message.send_message = ctx->send_message;
   ops[0].flags = write_flags;
   ops[0].reserved = NULL;
   ops[1].op = GRPC_OP_SEND_INITIAL_METADATA;
@@ -771,17 +772,18 @@ grpcsharp_call_send_close_from_client(grpc_call *call,
 
 GPR_EXPORT grpc_call_error GPR_CALLTYPE grpcsharp_call_send_status_from_server(
     grpc_call *call, grpcsharp_batch_context *ctx, grpc_status_code status_code,
-    const char *status_details, grpc_metadata_array *trailing_metadata,
+    const char *status_details, size_t status_details_len,
+    grpc_metadata_array *trailing_metadata,
     int32_t send_empty_initial_metadata, const char* optional_send_buffer,
     size_t optional_send_buffer_len, uint32_t write_flags) {
   /* TODO: don't use magic number */
   grpc_op ops[3];
   memset(ops, 0, sizeof(ops));
   size_t nops = 1;
+  grpc_slice status_details_slice = grpc_slice_from_copied_buffer(status_details, status_details_len);
   ops[0].op = GRPC_OP_SEND_STATUS_FROM_SERVER;
   ops[0].data.send_status_from_server.status = status_code;
-  ops[0].data.send_status_from_server.status_details =
-      gpr_strdup(status_details);
+  ops[0].data.send_status_from_server.status_details = &status_details_slice;
   grpcsharp_metadata_array_move(
       &(ctx->send_status_from_server.trailing_metadata), trailing_metadata);
   ops[0].data.send_status_from_server.trailing_metadata_count =
@@ -794,10 +796,10 @@ GPR_EXPORT grpc_call_error GPR_CALLTYPE grpcsharp_call_send_status_from_server(
     ops[nops].op = GRPC_OP_SEND_MESSAGE;
     ctx->send_message = string_to_byte_buffer(optional_send_buffer,
                                               optional_send_buffer_len);
-    ops[nops].data.send_message = ctx->send_message;
+    ops[nops].data.send_message.send_message = ctx->send_message;
     ops[nops].flags = write_flags;
     ops[nops].reserved = NULL;
-    nops ++;
+    nops++;
   }
   if (send_empty_initial_metadata) {
     ops[nops].op = GRPC_OP_SEND_INITIAL_METADATA;
@@ -813,7 +815,7 @@ grpcsharp_call_recv_message(grpc_call *call, grpcsharp_batch_context *ctx) {
   /* TODO: don't use magic number */
   grpc_op ops[1];
   ops[0].op = GRPC_OP_RECV_MESSAGE;
-  ops[0].data.recv_message = &(ctx->recv_message);
+  ops[0].data.recv_message.recv_message = &(ctx->recv_message);
   ops[0].flags = 0;
   ops[0].reserved = NULL;
   return grpc_call_start_batch(call, ops, sizeof(ops) / sizeof(ops[0]), ctx,
@@ -1057,6 +1059,31 @@ GPR_EXPORT grpc_call_credentials *GPR_CALLTYPE grpcsharp_metadata_credentials_cr
   plugin.state = (void*)(intptr_t)metadata_interceptor;
   plugin.type = "";
   return grpc_metadata_credentials_create_from_plugin(plugin, NULL);
+}
+
+/* Auth context */
+
+GPR_EXPORT grpc_auth_context *GPR_CALLTYPE grpcsharp_call_auth_context(grpc_call *call) {
+  return grpc_call_auth_context(call);
+}
+
+GPR_EXPORT const char *GPR_CALLTYPE grpcsharp_auth_context_peer_identity_property_name(
+    const grpc_auth_context *ctx) {
+  return grpc_auth_context_peer_identity_property_name(ctx);
+}
+
+GPR_EXPORT grpc_auth_property_iterator GPR_CALLTYPE
+grpcsharp_auth_context_property_iterator(const grpc_auth_context *ctx) {
+  return grpc_auth_context_property_iterator(ctx);
+}
+
+GPR_EXPORT const grpc_auth_property *GPR_CALLTYPE grpcsharp_auth_property_iterator_next(
+    grpc_auth_property_iterator *it) {
+  return grpc_auth_property_iterator_next(it);
+}
+
+GPR_EXPORT void GPR_CALLTYPE grpcsharp_auth_context_release(grpc_auth_context *ctx) {
+  grpc_auth_context_release(ctx);
 }
 
 /* Logging */
