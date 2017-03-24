@@ -265,6 +265,9 @@ add_library(grpc STATIC
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/tcp_client_windows.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/tcp_posix.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/tcp_server_posix.c
+  ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/tcp_server_utils_posix_noifaddrs.c
+  ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/tcp_server_utils_posix_common.c
+  ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/tcp_server_utils_posix_ifaddrs.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/tcp_server_uv.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/tcp_server_windows.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/tcp_uv.c
