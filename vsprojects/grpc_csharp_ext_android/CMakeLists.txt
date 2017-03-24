@@ -445,6 +445,7 @@ target_include_directories(grpc
 )
 
 target_link_libraries(grpc
+  m  # math
   ${_gRPC_BASELIB_LIBRARIES}
   ${_gRPC_SSL_LIBRARIES}
   ${_gRPC_ZLIB_LIBRARIES}

@@ -32,9 +32,6 @@
  */
 
 #include "src/core/lib/iomgr/port.h"
-
-#ifdef GRPC_HAVE_IFADDRS
-
 #include "src/core/lib/iomgr/tcp_server_utils_posix.h"
 
 #include <errno.h>
@@ -216,5 +213,3 @@ error:
   GRPC_ERROR_UNREF(err);
   return ret;
 }
-
-#endif /* GRPC_HAVE_IFADDRS */
