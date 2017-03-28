@@ -29,22 +29,24 @@ do
       shift 1
       ;;
     '-c'|'-config'|'--config' )
-      if [ "$2" = "release" ]; then
+      arg_val=$(echo "$2" | tr '[:upper:]' '[:lower:]')
+      if [ "$arg_val" = "release" ]; then
         :
-      elif [ "$2" = "debug" ]; then
+      elif [ "$arg_val" = "debug" ]; then
         :
       else
           echo "invalid arg: $1 release/debug" 1>&2
           exit 1
       fi
-      arg_config="$2"
+      arg_config="$arg_val"
       shift 1
       ;;
     '-t'|'-target'|'--target' )
-      if [ "$2" = "android" ]; then
+      arg_val=$(echo "$2" | tr '[:upper:]' '[:lower:]')
+      if [ "$arg_val" = "android" ]; then
         target_android=1
         target_all=0
-      elif [ "$2" = "ios" ]; then
+      elif [ "$arg_val" = "ios" ]; then
         target_ios=1
         target_all=0
       else
@@ -54,10 +56,11 @@ do
       shift 1
       ;;
     '-a'|'-arch'|'--arch' )
-      if [ "$2" = "arm" ]; then
+      arg_val=$(echo "$2" | tr '[:upper:]' '[:lower:]')
+      if [ "$arg_val" = "arm" ]; then
         arch_arm=1
         arch_all=0
-      elif [ "$2" = "x86" ]; then
+      elif [ "$arg_val" = "x86" ]; then
         arch_x86=1
         arch_all=0
       else
