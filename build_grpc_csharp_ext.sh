@@ -216,9 +216,12 @@ if [ "$target_all" = "1" ] || [ "$target_ios" = "1" ]; then
     output="$OUTPUT_DIR/iOS/$target"
     rm -dfr "$output"
     mkdir -p "$output"
-    cp "./$work_dir/Build/Products/Release-iphonesimulator/libgrpc_csharp_ext.a" "$output/"
-    cp "./$work_dir/Build/Products/Release-iphonesimulator/gRPC-Core/libgRPC-Core.a" "$output/"
-    cp "./$work_dir/Build/Products/Release-iphonesimulator/BoringSSL/libBoringSSL.a" "$output/"
+    cp "./$work_dir/Build/Products/Release-iphonesimulator/libgrpc_csharp_ext.a" "$output/" 2>/dev/null || :
+    cp "./$work_dir/Build/Products/Release-iphonesimulator/gRPC-Core/libgRPC-Core.a" "$output/" 2>/dev/null || :
+    cp "./$work_dir/Build/Products/Release-iphonesimulator/BoringSSL/libBoringSSL.a" "$output/" 2>/dev/null || :
+    cp "./$work_dir/Build/Products/Release-iphoneos/libgrpc_csharp_ext.a" "$output/" 2>/dev/null || :
+    cp "./$work_dir/Build/Products/Release-iphoneos/gRPC-Core/libgRPC-Core.a" "$output/" 2>/dev/null || :
+    cp "./$work_dir/Build/Products/Release-iphoneos/BoringSSL/libBoringSSL.a" "$output/" 2>/dev/null || :
   fi  # x86
 
 fi  # ios
