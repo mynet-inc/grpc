@@ -211,7 +211,7 @@ if [ "$target_all" = "1" ] || [ "$target_ios" = "1" ]; then
     rm -dfr "$work_dir"
     mkdir -p "$work_dir"
 
-    xcodebuild -workspace grpc_csharp_ext.xcworkspace -sdk iphonesimulator -scheme grpc_csharp_ext -configuration $BUILD_TYPE -arch i386 -arch x86_64 ONLY_ACTIVE_ARCH=NO -derivedDataPath "$work_dir" clean build
+    xcodebuild -workspace grpc_csharp_ext.xcworkspace -sdk iphonesimulator -scheme grpc_csharp_ext -configuration $BUILD_TYPE -arch i386 -arch x86_64 VALID_ARCHS="i386 x86_64" ONLY_ACTIVE_ARCH=NO -derivedDataPath "$work_dir" clean build
 
     output="$OUTPUT_DIR/iOS/$target"
     rm -dfr "$output"
