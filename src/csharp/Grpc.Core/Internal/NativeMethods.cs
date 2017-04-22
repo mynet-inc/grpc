@@ -87,6 +87,7 @@ namespace Grpc.Core.Internal
         public readonly Delegates.grpcsharp_call_send_message_delegate grpcsharp_call_send_message;
         public readonly Delegates.grpcsharp_call_send_close_from_client_delegate grpcsharp_call_send_close_from_client;
         public readonly Delegates.grpcsharp_call_send_status_from_server_delegate grpcsharp_call_send_status_from_server;
+        public readonly Delegates.grpcsharp_call_goaway_from_server_delegate grpcsharp_call_goaway_from_server;
         public readonly Delegates.grpcsharp_call_recv_message_delegate grpcsharp_call_recv_message;
         public readonly Delegates.grpcsharp_call_recv_initial_metadata_delegate grpcsharp_call_recv_initial_metadata;
         public readonly Delegates.grpcsharp_call_start_serverside_delegate grpcsharp_call_start_serverside;
@@ -201,6 +202,7 @@ namespace Grpc.Core.Internal
             this.grpcsharp_call_send_message = GetMethodDelegate<Delegates.grpcsharp_call_send_message_delegate>(library);
             this.grpcsharp_call_send_close_from_client = GetMethodDelegate<Delegates.grpcsharp_call_send_close_from_client_delegate>(library);
             this.grpcsharp_call_send_status_from_server = GetMethodDelegate<Delegates.grpcsharp_call_send_status_from_server_delegate>(library);
+            this.grpcsharp_call_goaway_from_server = GetMethodDelegate<Delegates.grpcsharp_call_goaway_from_server_delegate>(library);
             this.grpcsharp_call_recv_message = GetMethodDelegate<Delegates.grpcsharp_call_recv_message_delegate>(library);
             this.grpcsharp_call_recv_initial_metadata = GetMethodDelegate<Delegates.grpcsharp_call_recv_initial_metadata_delegate>(library);
             this.grpcsharp_call_start_serverside = GetMethodDelegate<Delegates.grpcsharp_call_start_serverside_delegate>(library);
@@ -350,6 +352,7 @@ namespace Grpc.Core.Internal
             public delegate CallError grpcsharp_call_send_status_from_server_delegate(CallSafeHandle call,
                 BatchContextSafeHandle ctx, StatusCode statusCode, byte[] statusMessage, UIntPtr statusMessageLen, MetadataArraySafeHandle metadataArray, bool sendEmptyInitialMetadata,
                 byte[] optionalSendBuffer, UIntPtr optionalSendBufferLen, WriteFlags writeFlags);
+            public delegate void grpcsharp_call_goaway_from_server_delegate(CallSafeHandle call);
             public delegate CallError grpcsharp_call_recv_message_delegate(CallSafeHandle call,
                 BatchContextSafeHandle ctx);
             public delegate CallError grpcsharp_call_recv_initial_metadata_delegate(CallSafeHandle call,

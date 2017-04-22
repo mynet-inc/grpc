@@ -676,6 +676,9 @@
     <ClCompile Include="$(SolutionDir)\..\src\core\plugin_registry\grpc_plugin_registry.c">
       <Filter>src\core\plugin_registry</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\core\lib\surface\channel_goaway.c">
+      <Filter>src\core\lib\surface</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(SolutionDir)\..\include\grpc\byte_buffer.h">
@@ -770,6 +773,9 @@
     </ClInclude>
     <ClInclude Include="$(SolutionDir)\..\include\grpc\census.h">
       <Filter>include\grpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\core\lib\surface\channel_goaway.h">
+      <Filter>src\core\lib\surface</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

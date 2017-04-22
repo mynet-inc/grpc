@@ -219,6 +219,9 @@ GRPCAPI grpc_call_error grpc_call_start_batch(grpc_call *call,
                                               const grpc_op *ops, size_t nops,
                                               void *tag, void *reserved);
 
+/** send GOAWAY frame to client but not shutdown.  */
+GRPCAPI void grpc_call_goaway(grpc_call *call);
+
 /** Returns a newly allocated string representing the endpoint to which this
     call is communicating with. The string is in the uri format accepted by
     grpc_channel_create.

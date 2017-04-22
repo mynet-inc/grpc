@@ -144,6 +144,16 @@ namespace Grpc.Core.Internal
                     optionalPayload, optionalPayloadLength, writeFlags).CheckOk();
             }
         }
+            
+        public void SendGoawayFromServer(SendCompletionHandler callback)
+        {
+            using (completionQueue.NewScope())
+            {
+                var ctx = BatchContextSafeHandle.Create();
+                completionQueue.CompletionRegistry.RegisterBatchCompletion(ctx, (success, context) => callback(success));
+                Native.grpcsharp_call_goaway_from_server(this);
+            }
+        }
 
         public void StartReceiveMessage(ReceivedMessageHandler callback)
         {

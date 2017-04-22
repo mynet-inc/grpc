@@ -772,6 +772,11 @@ GPR_EXPORT grpc_call_error GPR_CALLTYPE grpcsharp_call_send_status_from_server(
   return grpc_call_start_batch(call, ops, nops, ctx, NULL);
 }
 
+GPR_EXPORT void GPR_CALLTYPE
+grpcsharp_call_goaway_from_server(grpc_call *call) {
+  grpc_call_goaway(call);
+}
+
 GPR_EXPORT grpc_call_error GPR_CALLTYPE
 grpcsharp_call_recv_message(grpc_call *call, grpcsharp_batch_context *ctx) {
   /* TODO: don't use magic number */

@@ -55,6 +55,7 @@
 #include "src/core/lib/surface/api_trace.h"
 #include "src/core/lib/surface/call.h"
 #include "src/core/lib/surface/channel.h"
+#include "src/core/lib/surface/channel_goaway.h"
 #include "src/core/lib/surface/completion_queue.h"
 #include "src/core/lib/surface/validate_metadata.h"
 #include "src/core/lib/transport/error_utils.h"
@@ -1741,6 +1742,12 @@ grpc_call_error grpc_call_start_batch_and_execute(grpc_exec_ctx *exec_ctx,
                                                   size_t nops,
                                                   grpc_closure *closure) {
   return call_start_batch(exec_ctx, call, ops, nops, closure, 1);
+}
+
+void grpc_call_goaway(grpc_call *call) {
+  GRPC_API_TRACE("grpc_call_goaway(call=%p", 1, (call));
+
+  grpc_channel_goaway(call->channel);
 }
 
 void grpc_call_context_set(grpc_call *call, grpc_context_index elem,

@@ -32,6 +32,7 @@
 #endregion
 
 using System;
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -206,6 +207,25 @@ namespace Grpc.Core
             using (var authContextNative = callHandle.GetAuthContext())
             {
                 return authContextNative.ToAuthContext();
+            }
+        }
+
+        /// <summary>
+        /// Send goaway from server.
+        /// </summary>
+        public void SendGoawayFromServer()
+        {
+            callHandle.SendGoawayFromServer(HandleSendGoawayFromServerFinished);
+        }
+
+        /// <summary>
+        /// Handles send goaway from server completion.
+        /// </summary>
+        private void HandleSendGoawayFromServerFinished(bool success)
+        {
+            if (!success)
+            {
+                GrpcEnvironment.Logger.Error(new System.IO.IOException("Error sending goaway from server."), "Error sending goaway from server.");
             }
         }
     }
