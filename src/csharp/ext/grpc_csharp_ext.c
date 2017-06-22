@@ -380,13 +380,7 @@ grpcsharp_completion_queue_destroy(grpc_completion_queue *cq) {
 GPR_EXPORT grpc_event GPR_CALLTYPE
 grpcsharp_completion_queue_next(grpc_completion_queue *cq) {
 	return grpc_completion_queue_next(cq, gpr_inf_future(GPR_CLOCK_REALTIME),
-		NULL, NULL);
-}
-
-GPR_EXPORT grpc_event GPR_CALLTYPE
-grpcsharp_completion_queue_next_debuggable(grpc_completion_queue *cq, magic_for_debug_callback_funcptr callback) {
-	return grpc_completion_queue_next(cq, gpr_inf_future(GPR_CLOCK_REALTIME),
-		NULL, callback);
+                                      NULL);
 }
 
 GPR_EXPORT grpc_event GPR_CALLTYPE
