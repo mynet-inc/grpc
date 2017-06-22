@@ -36,7 +36,7 @@
 
 #include <grpc/support/port_platform.h>
 
-/* Thread local storage.
+/** Thread local storage.
 
    A minimal wrapper that should be implementable across many compilers,
    and implementable efficiently across most modern compilers.
@@ -58,7 +58,7 @@
      gpr_tls_set(&foo, new_value);
 
    Accessing a thread local:
-     current_value = gpr_tls_get(&foo, value);
+     current_value = gpr_tls_get(&foo);
 
    ALL functions here may be implemented as macros. */
 

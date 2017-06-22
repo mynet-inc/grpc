@@ -155,7 +155,7 @@ fi
 ($PYTHON -m virtualenv $VENV ||
  $HOST_PYTHON -m virtualenv -p $PYTHON $VENV ||
  true)
-VENV_PYTHON=`script_realpath -s "$VENV/$VENV_RELATIVE_PYTHON"`
+VENV_PYTHON=`script_realpath "$VENV/$VENV_RELATIVE_PYTHON"`
 
 # pip-installs the directory specified. Used because on MSYS the vanilla Windows
 # Python gets confused when parsing paths.
@@ -187,7 +187,8 @@ $VENV_PYTHON $ROOT/src/python/grpcio_reflection/setup.py build_package_protos
 pip_install_dir $ROOT/src/python/grpcio_reflection
 
 # Build/install tests
-$VENV_PYTHON -m pip install coverage oauth2client
+$VENV_PYTHON -m pip install coverage==4.4 oauth2client==4.1.0 \
+                            google-auth==1.0.0 requests==2.14.2
 $VENV_PYTHON $ROOT/src/python/grpcio_tests/setup.py preprocess
 $VENV_PYTHON $ROOT/src/python/grpcio_tests/setup.py build_package_protos
 pip_install_dir $ROOT/src/python/grpcio_tests

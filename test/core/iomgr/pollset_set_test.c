@@ -86,7 +86,7 @@ static void init_test_pollsets(test_pollset *pollsets, const int num_pollsets) {
 
 static void destroy_pollset(grpc_exec_ctx *exec_ctx, void *p,
                             grpc_error *error) {
-  grpc_pollset_destroy(p);
+  grpc_pollset_destroy(exec_ctx, p);
 }
 
 static void cleanup_test_pollsets(grpc_exec_ctx *exec_ctx,
@@ -143,7 +143,8 @@ static void cleanup_test_fds(grpc_exec_ctx *exec_ctx, test_fd *tfds,
   int release_fd;
 
   for (int i = 0; i < num_fds; i++) {
-    grpc_fd_shutdown(exec_ctx, tfds[i].fd, GRPC_ERROR_CREATE("fd cleanup"));
+    grpc_fd_shutdown(exec_ctx, tfds[i].fd,
+                     GRPC_ERROR_CREATE_FROM_STATIC_STRING("fd cleanup"));
     grpc_exec_ctx_flush(exec_ctx);
 
     /* grpc_fd_orphan frees the memory allocated for grpc_fd. Normally it also
@@ -447,8 +448,11 @@ int main(int argc, char **argv) {
   grpc_exec_ctx exec_ctx = GRPC_EXEC_CTX_INIT;
   grpc_test_init(argc, argv);
   grpc_iomgr_init();
+  grpc_iomgr_start();
 
-  if (poll_strategy != NULL && strcmp(poll_strategy, "epoll") == 0) {
+  if (poll_strategy != NULL &&
+      (strcmp(poll_strategy, "epoll") == 0 ||
+       strcmp(poll_strategy, "epoll-threadpool") == 0)) {
     pollset_set_test_basic();
     pollset_set_test_dup_fds();
     pollset_set_test_empty_pollset();

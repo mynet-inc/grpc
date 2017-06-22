@@ -31,6 +31,7 @@
  *
  */
 
+#include <iostream>
 #include <memory>
 #include <set>
 
@@ -39,10 +40,10 @@
 #include <gflags/gflags.h>
 #include <grpc/support/log.h>
 
+#include "test/cpp/qps/benchmark_config.h"
 #include "test/cpp/qps/driver.h"
 #include "test/cpp/qps/parse_json.h"
 #include "test/cpp/qps/report.h"
-#include "test/cpp/util/benchmark_config.h"
 
 DEFINE_string(scenarios_file, "",
               "JSON file containing an array of Scenario objects");
@@ -93,6 +94,7 @@ static std::unique_ptr<ScenarioResult> RunAndReport(const Scenario& scenario,
   GetReporter()->ReportLatency(*result);
   GetReporter()->ReportTimes(*result);
   GetReporter()->ReportCpuUsage(*result);
+  GetReporter()->ReportPollCount(*result);
 
   for (int i = 0; *success && i < result->client_success_size(); i++) {
     *success = result->client_success(i);

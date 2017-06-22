@@ -133,7 +133,7 @@ static void session_shutdown_cb(grpc_exec_ctx *exec_ctx, void *arg, /*session */
   gpr_free(se);
   /* Start to shutdown listen fd. */
   grpc_fd_shutdown(exec_ctx, sv->em_fd,
-                   GRPC_ERROR_CREATE("session_shutdown_cb"));
+                   GRPC_ERROR_CREATE_FROM_STATIC_STRING("session_shutdown_cb"));
 }
 
 /* Called when data become readable in a session. */
@@ -535,7 +535,7 @@ static void test_grpc_fd_change(void) {
 
 static void destroy_pollset(grpc_exec_ctx *exec_ctx, void *p,
                             grpc_error *error) {
-  grpc_pollset_destroy(p);
+  grpc_pollset_destroy(exec_ctx, p);
 }
 
 int main(int argc, char **argv) {
@@ -543,6 +543,7 @@ int main(int argc, char **argv) {
   grpc_exec_ctx exec_ctx = GRPC_EXEC_CTX_INIT;
   grpc_test_init(argc, argv);
   grpc_iomgr_init();
+  grpc_iomgr_start();
   g_pollset = gpr_zalloc(grpc_pollset_size());
   grpc_pollset_init(g_pollset, &g_mu);
   test_grpc_fd();

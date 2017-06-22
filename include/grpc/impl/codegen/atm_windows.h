@@ -34,10 +34,11 @@
 #ifndef GRPC_IMPL_CODEGEN_ATM_WINDOWS_H
 #define GRPC_IMPL_CODEGEN_ATM_WINDOWS_H
 
-/* Win32 variant of atm_platform.h */
+/** Win32 variant of atm_platform.h */
 #include <grpc/impl/codegen/port_platform.h>
 
 typedef intptr_t gpr_atm;
+#define GPR_ATM_MAX INTPTR_MAX
 
 #define gpr_atm_full_barrier MemoryBarrier
 
@@ -63,7 +64,7 @@ static __inline void gpr_atm_no_barrier_store(gpr_atm *p, gpr_atm value) {
 }
 
 static __inline int gpr_atm_no_barrier_cas(gpr_atm *p, gpr_atm o, gpr_atm n) {
-/* InterlockedCompareExchangePointerNoFence() not available on vista or
+/** InterlockedCompareExchangePointerNoFence() not available on vista or
    windows7 */
 #ifdef GPR_ARCH_64
   return o == (gpr_atm)InterlockedCompareExchangeAcquire64(
@@ -94,9 +95,19 @@ static __inline int gpr_atm_rel_cas(gpr_atm *p, gpr_atm o, gpr_atm n) {
 #endif
 }
 
+static __inline int gpr_atm_full_cas(gpr_atm *p, gpr_atm o, gpr_atm n) {
+#ifdef GPR_ARCH_64
+  return o == (gpr_atm)InterlockedCompareExchange64((volatile LONGLONG *)p,
+                                                    (LONGLONG)n, (LONGLONG)o);
+#else
+  return o == (gpr_atm)InterlockedCompareExchange((volatile LONG *)p, (LONG)n,
+                                                  (LONG)o);
+#endif
+}
+
 static __inline gpr_atm gpr_atm_no_barrier_fetch_add(gpr_atm *p,
                                                      gpr_atm delta) {
-  /* Use the CAS operation to get pointer-sized fetch and add */
+  /** Use the CAS operation to get pointer-sized fetch and add */
   gpr_atm old;
   do {
     old = *p;
@@ -105,7 +116,7 @@ static __inline gpr_atm gpr_atm_no_barrier_fetch_add(gpr_atm *p,
 }
 
 static __inline gpr_atm gpr_atm_full_fetch_add(gpr_atm *p, gpr_atm delta) {
-  /* Use a CAS operation to get pointer-sized fetch and add */
+  /** Use a CAS operation to get pointer-sized fetch and add */
   gpr_atm old;
 #ifdef GPR_ARCH_64
   do {

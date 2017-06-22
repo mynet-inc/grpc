@@ -34,7 +34,7 @@
 #ifndef GRPC_IMPL_CODEGEN_ATM_H
 #define GRPC_IMPL_CODEGEN_ATM_H
 
-/* This interface provides atomic operations and barriers.
+/** This interface provides atomic operations and barriers.
    It is internal to gpr support code and should not be used outside it.
 
    If an operation with acquire semantics precedes another memory access by the
@@ -91,5 +91,10 @@
 #else
 #error could not determine platform for atm
 #endif
+
+/** Adds \a delta to \a *value, clamping the result to the range specified
+    by \a min and \a max.  Returns the new value. */
+gpr_atm gpr_atm_no_barrier_clamped_add(gpr_atm *value, gpr_atm delta,
+                                       gpr_atm min, gpr_atm max);
 
 #endif /* GRPC_IMPL_CODEGEN_ATM_H */

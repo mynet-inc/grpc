@@ -36,13 +36,17 @@ load("//bazel:grpc_build_system.bzl", "grpc_proto_library")
 grpc_proto_library(
     name = "compiler_test_proto",
     srcs = ["compiler_test.proto"],
+    generate_mock = True,
 )
 
 grpc_proto_library(
     name = "control_proto",
     srcs = ["control.proto"],
-    deps = ["payloads_proto", "stats_proto"],
     has_services = False,
+    deps = [
+        "payloads_proto",
+        "stats_proto",
+    ],
 )
 
 grpc_proto_library(
@@ -55,6 +59,7 @@ grpc_proto_library(
     name = "echo_proto",
     srcs = ["echo.proto"],
     deps = ["echo_messages_proto"],
+    generate_mock = True,
 )
 
 grpc_proto_library(
@@ -83,7 +88,11 @@ grpc_proto_library(
 grpc_proto_library(
     name = "services_proto",
     srcs = ["services.proto"],
-    deps = ["control_proto", "messages_proto"],
+    deps = [
+        "control_proto",
+        "messages_proto",
+        "stats_proto",
+    ],
 )
 
 grpc_proto_library(
@@ -95,5 +104,8 @@ grpc_proto_library(
 grpc_proto_library(
     name = "test_proto",
     srcs = ["test.proto"],
-    deps = ["empty_proto", "messages_proto"],
+    deps = [
+        "empty_proto",
+        "messages_proto",
+    ],
 )

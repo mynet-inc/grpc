@@ -51,7 +51,8 @@ namespace Grpc.Core.Internal
         static readonly ILogger Logger = GrpcEnvironment.Logger.ForType<CompletionRegistry>();
 
         readonly GrpcEnvironment environment;
-        readonly ConcurrentDictionary<IntPtr, OpCompletionDelegate> dict = new ConcurrentDictionary<IntPtr, OpCompletionDelegate>();
+        readonly ConcurrentDictionary<IntPtr, OpCompletionDelegate> dict = new ConcurrentDictionary<IntPtr, OpCompletionDelegate>(new IntPtrComparer());
+        IntPtr lastRegisteredKey;  // only for testing
 
         public CompletionRegistry(GrpcEnvironment environment)
         {
@@ -62,6 +63,7 @@ namespace Grpc.Core.Internal
         {
             environment.DebugStats.PendingBatchCompletions.Increment();
             GrpcPreconditions.CheckState(dict.TryAdd(key, callback));
+            this.lastRegisteredKey = key;
         }
 
         public void RegisterBatchCompletion(BatchContextSafeHandle ctx, BatchCompletionDelegate callback)
@@ -82,6 +84,14 @@ namespace Grpc.Core.Internal
             GrpcPreconditions.CheckState(dict.TryRemove(key, out value));
             environment.DebugStats.PendingBatchCompletions.Decrement();
             return value;
+        }
+
+        /// <summary>
+        /// For testing purposes only.
+        /// </summary>
+        public IntPtr LastRegisteredKey
+        {
+            get { return this.lastRegisteredKey; }
         }
 
         private static void HandleBatchCompletion(bool success, BatchContextSafeHandle ctx, BatchCompletionDelegate callback)
@@ -119,6 +129,22 @@ namespace Grpc.Core.Internal
                 {
                     ctx.Dispose();
                 }
+            }
+        }
+
+        /// <summary>
+        /// IntPtr doesn't implement <c>IEquatable{IntPtr}</c> so we need to use custom comparer to avoid boxing.
+        /// </summary>
+        private class IntPtrComparer : IEqualityComparer<IntPtr>
+        {
+            public bool Equals(IntPtr x, IntPtr y)
+            {
+                return x == y;
+            }
+
+            public int GetHashCode(IntPtr obj)
+            {
+                return obj.GetHashCode();
             }
         }
     }

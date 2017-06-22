@@ -116,7 +116,7 @@ grpc_error *grpc_chttp2_perform_read(grpc_exec_ctx *exec_ctx,
               GRPC_CHTTP2_CLIENT_CONNECT_STRING[t->deframe_state],
               (int)(uint8_t)GRPC_CHTTP2_CLIENT_CONNECT_STRING[t->deframe_state],
               *cur, (int)*cur, t->deframe_state);
-          err = GRPC_ERROR_CREATE(msg);
+          err = GRPC_ERROR_CREATE_FROM_COPIED_STRING(msg);
           gpr_free(msg);
           return err;
         }
@@ -219,7 +219,7 @@ grpc_error *grpc_chttp2_perform_read(grpc_exec_ctx *exec_ctx,
                      t->incoming_frame_size,
                      t->settings[GRPC_ACKED_SETTINGS]
                                 [GRPC_CHTTP2_SETTINGS_MAX_FRAME_SIZE]);
-        err = GRPC_ERROR_CREATE(msg);
+        err = GRPC_ERROR_CREATE_FROM_COPIED_STRING(msg);
         gpr_free(msg);
         return err;
       }
@@ -278,7 +278,7 @@ static grpc_error *init_frame_parser(grpc_exec_ctx *exec_ctx,
     gpr_asprintf(
         &msg, "Expected SETTINGS frame as the first frame, got frame type %d",
         t->incoming_frame_type);
-    grpc_error *err = GRPC_ERROR_CREATE(msg);
+    grpc_error *err = GRPC_ERROR_CREATE_FROM_COPIED_STRING(msg);
     gpr_free(msg);
     return err;
   }
@@ -288,7 +288,7 @@ static grpc_error *init_frame_parser(grpc_exec_ctx *exec_ctx,
       char *msg;
       gpr_asprintf(&msg, "Expected CONTINUATION frame, got frame type %02x",
                    t->incoming_frame_type);
-      grpc_error *err = GRPC_ERROR_CREATE(msg);
+      grpc_error *err = GRPC_ERROR_CREATE_FROM_COPIED_STRING(msg);
       gpr_free(msg);
       return err;
     }
@@ -299,7 +299,7 @@ static grpc_error *init_frame_parser(grpc_exec_ctx *exec_ctx,
           "Expected CONTINUATION frame for grpc_chttp2_stream %08x, got "
           "grpc_chttp2_stream %08x",
           t->expect_continuation_stream_id, t->incoming_stream_id);
-      grpc_error *err = GRPC_ERROR_CREATE(msg);
+      grpc_error *err = GRPC_ERROR_CREATE_FROM_COPIED_STRING(msg);
       gpr_free(msg);
       return err;
     }
@@ -311,7 +311,8 @@ static grpc_error *init_frame_parser(grpc_exec_ctx *exec_ctx,
     case GRPC_CHTTP2_FRAME_HEADER:
       return init_header_frame_parser(exec_ctx, t, 0);
     case GRPC_CHTTP2_FRAME_CONTINUATION:
-      return GRPC_ERROR_CREATE("Unexpected CONTINUATION frame");
+      return GRPC_ERROR_CREATE_FROM_STATIC_STRING(
+          "Unexpected CONTINUATION frame");
     case GRPC_CHTTP2_FRAME_RST_STREAM:
       return init_rst_stream_parser(exec_ctx, t);
     case GRPC_CHTTP2_FRAME_SETTINGS:
@@ -323,7 +324,7 @@ static grpc_error *init_frame_parser(grpc_exec_ctx *exec_ctx,
     case GRPC_CHTTP2_FRAME_GOAWAY:
       return init_goaway_parser(exec_ctx, t);
     default:
-      if (grpc_http_trace) {
+      if (GRPC_TRACER_ON(grpc_http_trace)) {
         gpr_log(GPR_ERROR, "Unknown frame type %02x", t->incoming_frame_type);
       }
       return init_skip_frame_parser(exec_ctx, t, 0);
@@ -371,7 +372,7 @@ static grpc_error *update_incoming_window(grpc_exec_ctx *exec_ctx,
     char *msg;
     gpr_asprintf(&msg, "frame of size %d overflows incoming window of %" PRId64,
                  t->incoming_frame_size, t->incoming_window);
-    grpc_error *err = GRPC_ERROR_CREATE(msg);
+    grpc_error *err = GRPC_ERROR_CREATE_FROM_COPIED_STRING(msg);
     gpr_free(msg);
     return err;
   }
@@ -409,7 +410,7 @@ static grpc_error *update_incoming_window(grpc_exec_ctx *exec_ctx,
                      s->incoming_window_delta +
                          t->settings[GRPC_ACKED_SETTINGS]
                                     [GRPC_CHTTP2_SETTINGS_INITIAL_WINDOW_SIZE]);
-        grpc_error *err = GRPC_ERROR_CREATE(msg);
+        grpc_error *err = GRPC_ERROR_CREATE_FROM_COPIED_STRING(msg);
         gpr_free(msg);
         return err;
       }
@@ -417,11 +418,9 @@ static grpc_error *update_incoming_window(grpc_exec_ctx *exec_ctx,
 
     GRPC_CHTTP2_FLOW_DEBIT_STREAM_INCOMING_WINDOW_DELTA("parse", t, s,
                                                         incoming_frame_size);
-    if ((int64_t)t->settings[GRPC_SENT_SETTINGS]
-                            [GRPC_CHTTP2_SETTINGS_INITIAL_WINDOW_SIZE] +
-            (int64_t)s->incoming_window_delta - (int64_t)s->announce_window <=
-        (int64_t)t->settings[GRPC_SENT_SETTINGS]
-                            [GRPC_CHTTP2_SETTINGS_INITIAL_WINDOW_SIZE] /
+    if ((int64_t)s->incoming_window_delta - (int64_t)s->announce_window <=
+        -(int64_t)t->settings[GRPC_SENT_SETTINGS]
+                             [GRPC_CHTTP2_SETTINGS_INITIAL_WINDOW_SIZE] /
             2) {
       grpc_chttp2_become_writable(exec_ctx, t, s,
                                   GRPC_CHTTP2_STREAM_WRITE_INITIATE_UNCOVERED,
@@ -457,12 +456,13 @@ static grpc_error *init_data_frame_parser(grpc_exec_ctx *exec_ctx,
     return init_skip_frame_parser(exec_ctx, t, 0);
   }
   if (err == GRPC_ERROR_NONE) {
-    err = grpc_chttp2_data_parser_begin_frame(&s->data_parser,
-                                              t->incoming_frame_flags, s->id);
+    err = grpc_chttp2_data_parser_begin_frame(
+        &s->data_parser, t->incoming_frame_flags, s->id, s);
   }
 error_handler:
   if (err == GRPC_ERROR_NONE) {
     t->incoming_stream = s;
+    /* t->parser = grpc_chttp2_data_parser_parse;*/
     t->parser = grpc_chttp2_data_parser_parse;
     t->parser_data = &s->data_parser;
     return GRPC_ERROR_NONE;
@@ -492,7 +492,7 @@ static void on_initial_header(grpc_exec_ctx *exec_ctx, void *tp,
 
   GPR_ASSERT(s != NULL);
 
-  if (grpc_http_trace) {
+  if (GRPC_TRACER_ON(grpc_http_trace)) {
     char *key = grpc_slice_to_c_string(GRPC_MDKEY(md));
     char *value =
         grpc_dump_slice(GRPC_MDVALUE(md), GPR_DUMP_HEX | GPR_DUMP_ASCII);
@@ -542,13 +542,21 @@ static void on_initial_header(grpc_exec_ctx *exec_ctx, void *tp,
       grpc_chttp2_cancel_stream(
           exec_ctx, t, s,
           grpc_error_set_int(
-              GRPC_ERROR_CREATE("received initial metadata size exceeds limit"),
+              GRPC_ERROR_CREATE_FROM_STATIC_STRING(
+                  "received initial metadata size exceeds limit"),
               GRPC_ERROR_INT_GRPC_STATUS, GRPC_STATUS_RESOURCE_EXHAUSTED));
       grpc_chttp2_parsing_become_skip_parser(exec_ctx, t);
       s->seen_error = true;
       GRPC_MDELEM_UNREF(exec_ctx, md);
     } else {
-      grpc_chttp2_incoming_metadata_buffer_add(&s->metadata_buffer[0], md);
+      grpc_error *error = grpc_chttp2_incoming_metadata_buffer_add(
+          exec_ctx, &s->metadata_buffer[0], md);
+      if (error != GRPC_ERROR_NONE) {
+        grpc_chttp2_cancel_stream(exec_ctx, t, s, error);
+        grpc_chttp2_parsing_become_skip_parser(exec_ctx, t);
+        s->seen_error = true;
+        GRPC_MDELEM_UNREF(exec_ctx, md);
+      }
     }
   }
 
@@ -564,7 +572,7 @@ static void on_trailing_header(grpc_exec_ctx *exec_ctx, void *tp,
 
   GPR_ASSERT(s != NULL);
 
-  if (grpc_http_trace) {
+  if (GRPC_TRACER_ON(grpc_http_trace)) {
     char *key = grpc_slice_to_c_string(GRPC_MDKEY(md));
     char *value =
         grpc_dump_slice(GRPC_MDVALUE(md), GPR_DUMP_HEX | GPR_DUMP_ASCII);
@@ -591,14 +599,22 @@ static void on_trailing_header(grpc_exec_ctx *exec_ctx, void *tp,
             new_size, metadata_size_limit);
     grpc_chttp2_cancel_stream(
         exec_ctx, t, s,
-        grpc_error_set_int(
-            GRPC_ERROR_CREATE("received trailing metadata size exceeds limit"),
-            GRPC_ERROR_INT_GRPC_STATUS, GRPC_STATUS_RESOURCE_EXHAUSTED));
+        grpc_error_set_int(GRPC_ERROR_CREATE_FROM_STATIC_STRING(
+                               "received trailing metadata size exceeds limit"),
+                           GRPC_ERROR_INT_GRPC_STATUS,
+                           GRPC_STATUS_RESOURCE_EXHAUSTED));
     grpc_chttp2_parsing_become_skip_parser(exec_ctx, t);
     s->seen_error = true;
     GRPC_MDELEM_UNREF(exec_ctx, md);
   } else {
-    grpc_chttp2_incoming_metadata_buffer_add(&s->metadata_buffer[1], md);
+    grpc_error *error = grpc_chttp2_incoming_metadata_buffer_add(
+        exec_ctx, &s->metadata_buffer[1], md);
+    if (error != GRPC_ERROR_NONE) {
+      grpc_chttp2_cancel_stream(exec_ctx, t, s, error);
+      grpc_chttp2_parsing_become_skip_parser(exec_ctx, t);
+      s->seen_error = true;
+      GRPC_MDELEM_UNREF(exec_ctx, md);
+    }
   }
 
   GPR_TIMER_END("on_trailing_header", 0);
@@ -757,7 +773,8 @@ static grpc_error *init_goaway_parser(grpc_exec_ctx *exec_ctx,
 static grpc_error *init_settings_frame_parser(grpc_exec_ctx *exec_ctx,
                                               grpc_chttp2_transport *t) {
   if (t->incoming_stream_id != 0) {
-    return GRPC_ERROR_CREATE("Settings frame received for grpc_chttp2_stream");
+    return GRPC_ERROR_CREATE_FROM_STATIC_STRING(
+        "Settings frame received for grpc_chttp2_stream");
   }
 
   grpc_error *err = grpc_chttp2_settings_parser_begin_frame(
@@ -788,7 +805,7 @@ static grpc_error *parse_frame_slice(grpc_exec_ctx *exec_ctx,
   if (err == GRPC_ERROR_NONE) {
     return err;
   } else if (grpc_error_get_int(err, GRPC_ERROR_INT_STREAM_ID, NULL)) {
-    if (grpc_http_trace) {
+    if (GRPC_TRACER_ON(grpc_http_trace)) {
       const char *msg = grpc_error_string(err);
       gpr_log(GPR_ERROR, "%s", msg);
     }

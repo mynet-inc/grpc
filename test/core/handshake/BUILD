@@ -27,16 +27,18 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+load("//bazel:grpc_build_system.bzl", "grpc_cc_library", "grpc_cc_test", "grpc_cc_binary")
+
 licenses(["notice"])  # 3-clause BSD
 
-cc_test(
+grpc_cc_test(
     name = "client_ssl",
     srcs = ["client_ssl.c"],
-    copts = ["-std=c99"],
+    language = "C",
     data = [
-        "//src/core/lib/tsi/test_creds:ca.pem",
-        "//src/core/lib/tsi/test_creds:server1.key",
-        "//src/core/lib/tsi/test_creds:server1.pem",
+        "//src/core/tsi/test_creds:ca.pem",
+        "//src/core/tsi/test_creds:server1.key",
+        "//src/core/tsi/test_creds:server1.pem",
     ],
     deps = [
         "//:gpr",
@@ -46,14 +48,14 @@ cc_test(
     ],
 )
 
-cc_test(
+grpc_cc_test(
     name = "server_ssl",
     srcs = ["server_ssl.c"],
-    copts = ["-std=c99"],
+    language = "C",
     data = [
-        "//src/core/lib/tsi/test_creds:ca.pem",
-        "//src/core/lib/tsi/test_creds:server1.key",
-        "//src/core/lib/tsi/test_creds:server1.pem",
+        "//src/core/tsi/test_creds:ca.pem",
+        "//src/core/tsi/test_creds:server1.key",
+        "//src/core/tsi/test_creds:server1.pem",
     ],
     deps = [
         "//:gpr",

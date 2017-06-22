@@ -48,13 +48,14 @@
 #include <grpc/grpc.h>
 #include <grpc/support/thd.h>
 #include <grpc/support/time.h>
-#include <gtest/gtest.h>
 
 #include "src/cpp/common/channel_filter.h"
 #include "src/proto/grpc/testing/echo.grpc.pb.h"
 #include "test/core/util/port.h"
 #include "test/core/util/test_config.h"
 #include "test/cpp/util/byte_buffer_proto_helper.h"
+
+#include <gtest/gtest.h>
 
 using grpc::testing::EchoRequest;
 using grpc::testing::EchoResponse;
@@ -122,8 +123,9 @@ class ChannelDataImpl : public ChannelData {
 
 class CallDataImpl : public CallData {
  public:
-  void StartTransportStreamOp(grpc_exec_ctx* exec_ctx, grpc_call_element* elem,
-                              TransportStreamOp* op) override {
+  void StartTransportStreamOpBatch(grpc_exec_ctx* exec_ctx,
+                                   grpc_call_element* elem,
+                                   TransportStreamOpBatch* op) override {
     // Incrementing the counter could be done from Init(), but we want
     // to test that the individual methods are actually called correctly.
     if (op->recv_initial_metadata() != nullptr) IncrementCallCounter();

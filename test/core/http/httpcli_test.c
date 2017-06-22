@@ -102,7 +102,7 @@ static void test_get(int port) {
         "pollset_work",
         grpc_pollset_work(&exec_ctx, grpc_polling_entity_pollset(&g_pops),
                           &worker, gpr_now(GPR_CLOCK_MONOTONIC),
-                          n_seconds_time(20))));
+                          n_seconds_time(1))));
     gpr_mu_unlock(g_mu);
     grpc_exec_ctx_finish(&exec_ctx);
     gpr_mu_lock(g_mu);
@@ -144,7 +144,7 @@ static void test_post(int port) {
         "pollset_work",
         grpc_pollset_work(&exec_ctx, grpc_polling_entity_pollset(&g_pops),
                           &worker, gpr_now(GPR_CLOCK_MONOTONIC),
-                          n_seconds_time(20))));
+                          n_seconds_time(1))));
     gpr_mu_unlock(g_mu);
     grpc_exec_ctx_finish(&exec_ctx);
     gpr_mu_lock(g_mu);
@@ -155,7 +155,7 @@ static void test_post(int port) {
 }
 
 static void destroy_pops(grpc_exec_ctx *exec_ctx, void *p, grpc_error *error) {
-  grpc_pollset_destroy(grpc_polling_entity_pollset(p));
+  grpc_pollset_destroy(exec_ctx, grpc_polling_entity_pollset(p));
 }
 
 int main(int argc, char **argv) {

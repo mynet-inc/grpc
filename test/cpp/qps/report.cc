@@ -40,6 +40,9 @@
 #include "test/cpp/qps/parse_json.h"
 #include "test/cpp/qps/stats.h"
 
+#include <grpc++/client_context.h>
+#include "src/proto/grpc/testing/services.grpc.pb.h"
+
 namespace grpc {
 namespace testing {
 
@@ -74,6 +77,12 @@ void CompositeReporter::ReportTimes(const ScenarioResult& result) {
 void CompositeReporter::ReportCpuUsage(const ScenarioResult& result) {
   for (size_t i = 0; i < reporters_.size(); ++i) {
     reporters_[i]->ReportCpuUsage(result);
+  }
+}
+
+void CompositeReporter::ReportPollCount(const ScenarioResult& result) {
+  for (size_t i = 0; i < reporters_.size(); ++i) {
+    reporters_[i]->ReportPollCount(result);
   }
 }
 
@@ -118,6 +127,13 @@ void GprLogReporter::ReportCpuUsage(const ScenarioResult& result) {
           result.summary().server_cpu_usage());
 }
 
+void GprLogReporter::ReportPollCount(const ScenarioResult& result) {
+  gpr_log(GPR_INFO, "Client Polls per Request: %.2f",
+          result.summary().client_polls_per_request());
+  gpr_log(GPR_INFO, "Server Polls per Request: %.2f",
+          result.summary().server_polls_per_request());
+}
+
 void JsonReporter::ReportQPS(const ScenarioResult& result) {
   grpc::string json_string =
       SerializeJson(result, "type.googleapis.com/grpc.testing.ScenarioResult");
@@ -139,6 +155,46 @@ void JsonReporter::ReportTimes(const ScenarioResult& result) {
 }
 
 void JsonReporter::ReportCpuUsage(const ScenarioResult& result) {
+  // NOP - all reporting is handled by ReportQPS.
+}
+
+void JsonReporter::ReportPollCount(const ScenarioResult& result) {
+  // NOP - all reporting is handled by ReportQPS.
+}
+
+void RpcReporter::ReportQPS(const ScenarioResult& result) {
+  grpc::ClientContext context;
+  grpc::Status status;
+  Void dummy;
+
+  gpr_log(GPR_INFO, "RPC reporter sending scenario result to server");
+  status = stub_->ReportScenario(&context, result, &dummy);
+
+  if (status.ok()) {
+    gpr_log(GPR_INFO, "RpcReporter report RPC success!");
+  } else {
+    gpr_log(GPR_ERROR, "RpcReporter report RPC: code: %d. message: %s",
+            status.error_code(), status.error_message().c_str());
+  }
+}
+
+void RpcReporter::ReportQPSPerCore(const ScenarioResult& result) {
+  // NOP - all reporting is handled by ReportQPS.
+}
+
+void RpcReporter::ReportLatency(const ScenarioResult& result) {
+  // NOP - all reporting is handled by ReportQPS.
+}
+
+void RpcReporter::ReportTimes(const ScenarioResult& result) {
+  // NOP - all reporting is handled by ReportQPS.
+}
+
+void RpcReporter::ReportCpuUsage(const ScenarioResult& result) {
+  // NOP - all reporting is handled by ReportQPS.
+}
+
+void RpcReporter::ReportPollCount(const ScenarioResult& result) {
   // NOP - all reporting is handled by ReportQPS.
 }
 

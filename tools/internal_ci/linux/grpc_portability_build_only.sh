@@ -33,9 +33,6 @@ set -ex
 # change to grpc repo root
 cd $(dirname $0)/../../..
 
-git submodule update --init
+source tools/internal_ci/helper_scripts/prepare_build_linux_rc
 
-# download docker images from dockerhub
-export DOCKERHUB_ORGANIZATION=grpctesting
-
-tools/jenkins/run_jenkins_matrix.sh -f portability linux --build_only
+tools/run_tests/run_tests_matrix.py -f portability linux --internal_ci --build_only

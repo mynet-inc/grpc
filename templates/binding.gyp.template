@@ -41,26 +41,68 @@
   {
     'variables': {
       'runtime%': 'node',
-      # UV integration in C core is enabled by default. It can be disabled
-      # by setting this argument to anything else.
-      'grpc_uv%': 'true',
       # Some Node installations use the system installation of OpenSSL, and on
       # some systems, the system OpenSSL still does not have ALPN support. This
       # will let users recompile gRPC to work without ALPN.
-      'grpc_alpn%': 'true'
+      'grpc_alpn%': 'true',
+      # Indicates that the library should be built with gcov.
+      'grpc_gcov%': 'false',
+      # Indicates that the library should be built with compatibility for musl
+      # libc, so that it can run on Alpine Linux. This is only necessary if not
+      # building on Alpine Linux
+      'grpc_alpine%': 'false'
     },
     'target_defaults': {
+      'configurations': {
+        % for name, args in configs.iteritems():
+        %  if name in ['dbg', 'opt']:
+        '${{'dbg':'Debug', 'opt': 'Release'}[name]}': {
+          % for arg, prop in [('CPPFLAGS', 'cflags'), ('DEFINES', 'defines')]:
+          %  if args.get(arg, None) is not None:
+          '${prop}': [
+            % for item in args.get(arg).split():
+              '${item}',
+            % endfor
+          ],
+          %  endif
+          % endfor
+        },
+        %  endif
+        % endfor
+      },
+      % for arg, prop in [('CPPFLAGS', 'cflags'), ('LDFLAGS', 'ldflags')]:
+      %  if defaults['global'].get(arg, None) is not None:
+      '${prop}': [
+        % for item in defaults['global'].get(arg).split():
+          '${item}',
+        % endfor
+      ],
+      %  endif
+      % endfor
       'include_dirs': [
         '.',
         'include'
       ],
       'defines': [
-        'GPR_BACKWARDS_COMPATIBILITY_MODE'
+        'GPR_BACKWARDS_COMPATIBILITY_MODE',
+        'GRPC_ARES=0',
+        'GRPC_UV'
       ],
       'conditions': [
-        ['grpc_uv=="true"', {
+        ['grpc_gcov=="true"', {
+          % for arg, prop in [('CPPFLAGS', 'cflags'), ('DEFINES', 'defines'), ('LDFLAGS', 'ldflags')]:
+          %  if configs['gcov'].get(arg, None) is not None:
+          '${prop}': [
+            % for item in configs['gcov'].get(arg).split():
+              '${item}',
+            % endfor
+          ],
+          %  endif
+          % endfor
+        }],
+        ['grpc_alpine=="true"', {
           'defines': [
-            'GRPC_UV'
+            'GPR_MUSL_LIBC_COMPAT'
           ]
         }],
         ['OS!="win" and runtime=="electron"', {
@@ -78,6 +120,15 @@
           ]
         }, {
           'conditions': [
+            ["target_arch=='ia32'", {
+               "include_dirs": [ "<(node_root_dir)/deps/openssl/config/piii" ]
+            }],
+            ["target_arch=='x64'", {
+               "include_dirs": [ "<(node_root_dir)/deps/openssl/config/k8" ]
+            }],
+            ["target_arch=='arm'", {
+               "include_dirs": [ "<(node_root_dir)/deps/openssl/config/arm" ]
+            }],
             ['grpc_alpn=="true"', {
               'defines': [
                 'TSI_OPENSSL_ALPN_SUPPORT=1'
@@ -90,22 +141,12 @@
           ],
           'include_dirs': [
             '<(node_root_dir)/deps/openssl/openssl/include',
-          ],
-          'conditions': [
-           ["target_arch=='ia32'", {
-               "include_dirs": [ "<(node_root_dir)/deps/openssl/config/piii" ]
-           }],
-           ["target_arch=='x64'", {
-               "include_dirs": [ "<(node_root_dir)/deps/openssl/config/k8" ]
-           }],
-           ["target_arch=='arm'", {
-               "include_dirs": [ "<(node_root_dir)/deps/openssl/config/arm" ]
-           }]
           ]
         }],
         ['OS == "win"', {
           "include_dirs": [
-            "third_party/zlib"
+            "third_party/zlib",
+            "third_party/cares/cares"
           ],
           "defines": [
             '_WIN32_WINNT=0x0600',
@@ -124,25 +165,9 @@
             "ws2_32"
           ]
         }, { # OS != "win"
-          'variables': {
-            'config': '<!(echo $CONFIG)',
-          },
           'include_dirs': [
-            '<(node_root_dir)/deps/zlib'
-          ],
-          'conditions': [
-            ['config=="gcov"', {
-              'cflags': [
-                '-ftest-coverage',
-                '-fprofile-arcs',
-                '-O0'
-              ],
-              'ldflags': [
-                '-ftest-coverage',
-                '-fprofile-arcs'
-              ]
-            }
-           ]
+            '<(node_root_dir)/deps/zlib',
+            '<(node_root_dir)/deps/cares/include'
           ]
         }]
       ]
@@ -178,7 +203,7 @@
           % endfor
         ]
       }],
-      ['OS == "win"', {
+      ['OS == "win" and runtime!="electron"', {
         'targets': [
           {
             # IMPORTANT WINDOWS BUILD INFORMATION
@@ -189,10 +214,13 @@
             # when including the Node headers. The remedy for this is to remove
             # the OpenSSL headers, from the downloaded Node development package,
             # which is typically located in `.node-gyp` in your home directory.
+            #
+            # This is not true of Electron, which does not have OpenSSL headers.
             'target_name': 'WINDOWS_BUILD_WARNING',
-            'actions': [
+            'rules': [
               {
-                'action_name': 'WINDOWS_BUILD_WARNING',
+                'rule_name': 'WINDOWS_BUILD_WARNING',
+                'extension': 'S',
                 'inputs': [
                   'package.json'
                 ],
@@ -203,6 +231,10 @@
               }
             ]
           },
+        ]
+      }],
+      ['OS == "win"', {
+        'targets': [
           # Only want to compile zlib under Windows
           % for module in node_modules:
           % for lib in libs:
@@ -272,15 +304,9 @@
         ],
         'cflags': [
           '-std=c++11',
-          '-Wall',
           '-pthread',
-          '-g',
           '-zdefs',
-          '-Werror',
           '-Wno-error=deprecated-declarations'
-        ],
-        'ldflags': [
-          '-g'
         ],
         "conditions": [
           ['OS=="win" or runtime=="electron"', {

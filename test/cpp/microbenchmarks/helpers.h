@@ -41,8 +41,8 @@ extern "C" {
 #include "test/core/util/memory_counters.h"
 }
 
+#include <benchmark/benchmark.h>
 #include <grpc++/impl/grpc_library.h>
-#include "third_party/benchmark/include/benchmark/benchmark.h"
 
 class Library {
  public:
@@ -55,7 +55,9 @@ class Library {
 
  private:
   Library() {
+#ifdef GPR_LOW_LEVEL_COUNTERS
     grpc_memory_counters_init();
+#endif
     init_lib_.init();
     rq_ = grpc_resource_quota_create("bm");
   }
@@ -70,6 +72,7 @@ class Library {
 extern "C" gpr_atm gpr_mu_locks;
 extern "C" gpr_atm gpr_counter_atm_cas;
 extern "C" gpr_atm gpr_counter_atm_add;
+extern "C" gpr_atm gpr_now_call_count;
 #endif
 
 class TrackCounters {
@@ -84,8 +87,10 @@ class TrackCounters {
       gpr_atm_no_barrier_load(&gpr_counter_atm_cas);
   const size_t atm_add_at_start_ =
       gpr_atm_no_barrier_load(&gpr_counter_atm_add);
-#endif
+  const size_t now_calls_at_start_ =
+      gpr_atm_no_barrier_load(&gpr_now_call_count);
   grpc_memory_counters counters_at_start_ = grpc_memory_counters_snapshot();
+#endif
 };
 
 #endif
