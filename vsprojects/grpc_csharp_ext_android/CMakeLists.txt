@@ -3,6 +3,16 @@ project(gprc_csharp_ext C)
 
 enable_language(C)
 
+if(UNIX)
+  if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    set(_gRPC_PLATFORM_LINUX ON)
+  elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(_gRPC_PLATFORM_MAC ON)
+  else()
+    set(_gRPC_PLATFORM_POSIX ON)
+  endif()
+endif()
+
 set(PROJECT_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 
 if(NOT ZLIB_ROOT_DIR)
@@ -17,6 +27,29 @@ if(EXISTS "${ZLIB_ROOT_DIR}/CMakeLists.txt")
   endif()
 else()
   message(WARNING "gRPC_ZLIB_PROVIDER is \"module\" but ZLIB_ROOT_DIR is wrong")
+endif()
+
+if(NOT CARES_ROOT_DIR)
+  set(CARES_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/c-ares)
+endif()
+string(TOLOWER ${CMAKE_SYSTEM_NAME} CARES_SYSTEM_NAME)
+set(CARES_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/cares/cares")
+set(CARES_BUILD_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/cares")
+set(CARES_PLATFORM_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/cares/config_${CARES_SYSTEM_NAME}")
+if(EXISTS "${CARES_ROOT_DIR}/CMakeLists.txt")
+  if("${CARES_SYSTEM_NAME}" MATCHES "windows")
+    add_definitions(-DCARES_STATICLIB=1)
+    add_definitions(-DWIN32_LEAN_AND_MEAN=1)
+  else()
+    add_definitions(-DHAVE_CONFIG_H=1)
+    add_definitions(-D_GNU_SOURCE=1)
+  endif()
+  add_subdirectory(src/c-ares third_party/cares)
+  if(TARGET cares)
+      set(_gRPC_CARES_LIBRARIES cares)
+  endif()
+else()
+  message(WARNING "gRPC_CARES_PROVIDER is \"module\" but CARES_ROOT_DIR is wrong")
 endif()
 
 if(NOT BORINGSSL_ROOT_DIR)
@@ -34,6 +67,12 @@ endif()
 include(GNUInstallDirs)
 if(NOT DEFINED CMAKE_INSTALL_CMAKEDIR)
   set(CMAKE_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/gRPC")
+endif()
+
+if(_gRPC_PLATFORM_MAC)
+  set(_gRPC_ALLTARGETS_LIBRARIES ${CMAKE_DL_LIBS} m pthread)
+elseif(UNIX)
+  set(_gRPC_ALLTARGETS_LIBRARIES ${CMAKE_DL_LIBS} rt m pthread)
 endif()
 
 
@@ -96,6 +135,8 @@ add_library(gpr STATIC
   ${PROJECT_ROOT_DIR}/src/core/lib/profiling/basic_timers.c
   ${PROJECT_ROOT_DIR}/src/core/lib/profiling/stap_timers.c
   ${PROJECT_ROOT_DIR}/src/core/lib/support/alloc.c
+  ${PROJECT_ROOT_DIR}/src/core/lib/support/arena.c
+  ${PROJECT_ROOT_DIR}/src/core/lib/support/atm.c
   ${PROJECT_ROOT_DIR}/src/core/lib/support/avl.c
   ${PROJECT_ROOT_DIR}/src/core/lib/support/backoff.c
   ${PROJECT_ROOT_DIR}/src/core/lib/support/cmdline.c
@@ -146,6 +187,15 @@ target_include_directories(gpr
   PRIVATE ${PROTOBUF_ROOT_DIR}/src
   PRIVATE ${ZLIB_INCLUDE_DIR}
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/third_party/zlib
+  PRIVATE ${CARES_BUILD_INCLUDE_DIR}
+  PRIVATE ${CARES_INCLUDE_DIR}
+  PRIVATE ${CARES_PLATFORM_INCLUDE_DIR}
+  PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/third_party/cares/cares
+  PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/third_party/gflags/include
+)
+
+target_link_libraries(gpr
+  ${_gRPC_ALLTARGETS_LIBRARIES}
 )
 
 
@@ -183,7 +233,6 @@ foreach(_hdr
   ${PROJECT_ROOT_DIR}/include/grpc/impl/codegen/gpr_slice.h
   ${PROJECT_ROOT_DIR}/include/grpc/impl/codegen/gpr_types.h
   ${PROJECT_ROOT_DIR}/include/grpc/impl/codegen/port_platform.h
-  ${PROJECT_ROOT_DIR}/include/grpc/impl/codegen/slice.h
   ${PROJECT_ROOT_DIR}/include/grpc/impl/codegen/sync.h
   ${PROJECT_ROOT_DIR}/include/grpc/impl/codegen/sync_generic.h
   ${PROJECT_ROOT_DIR}/include/grpc/impl/codegen/sync_posix.h
@@ -209,18 +258,12 @@ add_library(grpc STATIC
   ${PROJECT_ROOT_DIR}/src/core/lib/channel/channel_args.c
   ${PROJECT_ROOT_DIR}/src/core/lib/channel/channel_stack.c
   ${PROJECT_ROOT_DIR}/src/core/lib/channel/channel_stack_builder.c
-  ${PROJECT_ROOT_DIR}/src/core/lib/channel/compress_filter.c
   ${PROJECT_ROOT_DIR}/src/core/lib/channel/connected_channel.c
-  ${PROJECT_ROOT_DIR}/src/core/lib/channel/deadline_filter.c
   ${PROJECT_ROOT_DIR}/src/core/lib/channel/handshaker.c
   ${PROJECT_ROOT_DIR}/src/core/lib/channel/handshaker_factory.c
   ${PROJECT_ROOT_DIR}/src/core/lib/channel/handshaker_registry.c
-  ${PROJECT_ROOT_DIR}/src/core/lib/channel/http_client_filter.c
-  ${PROJECT_ROOT_DIR}/src/core/lib/channel/http_server_filter.c
-  ${PROJECT_ROOT_DIR}/src/core/lib/channel/message_size_filter.c
   ${PROJECT_ROOT_DIR}/src/core/lib/compression/compression.c
   ${PROJECT_ROOT_DIR}/src/core/lib/compression/message_compress.c
-  ${PROJECT_ROOT_DIR}/src/core/lib/debug/trace.c
   ${PROJECT_ROOT_DIR}/src/core/lib/http/format_request.c
   ${PROJECT_ROOT_DIR}/src/core/lib/http/httpcli.c
   ${PROJECT_ROOT_DIR}/src/core/lib/http/parser.c
@@ -231,9 +274,14 @@ add_library(grpc STATIC
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/endpoint_pair_uv.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/endpoint_pair_windows.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/error.c
-  ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/ev_epoll_linux.c
+  ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/ev_epoll1_linux.c
+  ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/ev_epoll_limited_pollers_linux.c
+  ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/ev_epoll_thread_pool_linux.c
+  ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/ev_epollex_linux.c
+  ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/ev_epollsig_linux.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/ev_poll_posix.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/ev_posix.c
+  ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/ev_windows.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/exec_ctx.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/executor.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/iocp_windows.c
@@ -241,7 +289,9 @@ add_library(grpc STATIC
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/iomgr_posix.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/iomgr_uv.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/iomgr_windows.c
+  ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/is_epollexclusive_available.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/load_file.c
+  ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/lockfree_event.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/network_status_tracker.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/polling_entity.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/pollset_set_uv.c
@@ -253,6 +303,7 @@ add_library(grpc STATIC
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/resolve_address_windows.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/resource_quota.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/sockaddr_utils.c
+  ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/socket_factory_posix.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/socket_mutator.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/socket_utils_common_posix.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/socket_utils_linux.c
@@ -265,9 +316,9 @@ add_library(grpc STATIC
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/tcp_client_windows.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/tcp_posix.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/tcp_server_posix.c
-  ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/tcp_server_utils_posix_noifaddrs.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/tcp_server_utils_posix_common.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/tcp_server_utils_posix_ifaddrs.c
+  ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/tcp_server_utils_posix_noifaddrs.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/tcp_server_uv.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/tcp_server_windows.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/tcp_uv.c
@@ -275,6 +326,7 @@ add_library(grpc STATIC
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/time_averaged_stats.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/timer_generic.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/timer_heap.c
+  ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/timer_manager.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/timer_uv.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/udp_server.c
   ${PROJECT_ROOT_DIR}/src/core/lib/iomgr/unix_sockets_posix.c
@@ -290,6 +342,7 @@ add_library(grpc STATIC
   ${PROJECT_ROOT_DIR}/src/core/lib/json/json_reader.c
   ${PROJECT_ROOT_DIR}/src/core/lib/json/json_string.c
   ${PROJECT_ROOT_DIR}/src/core/lib/json/json_writer.c
+  ${PROJECT_ROOT_DIR}/src/core/lib/slice/b64.c
   ${PROJECT_ROOT_DIR}/src/core/lib/slice/percent_encoding.c
   ${PROJECT_ROOT_DIR}/src/core/lib/slice/slice.c
   ${PROJECT_ROOT_DIR}/src/core/lib/slice/slice_buffer.c
@@ -308,8 +361,9 @@ add_library(grpc STATIC
   ${PROJECT_ROOT_DIR}/src/core/lib/surface/channel_ping.c
   ${PROJECT_ROOT_DIR}/src/core/lib/surface/channel_stack_type.c
   ${PROJECT_ROOT_DIR}/src/core/lib/surface/completion_queue.c
+  ${PROJECT_ROOT_DIR}/src/core/lib/surface/completion_queue_factory.c
   ${PROJECT_ROOT_DIR}/src/core/lib/surface/event_string.c
-  ${PROJECT_ROOT_DIR}/src/core/lib/surface/lame_client.c
+  ${PROJECT_ROOT_DIR}/src/core/lib/surface/lame_client.cc
   ${PROJECT_ROOT_DIR}/src/core/lib/surface/metadata_array.c
   ${PROJECT_ROOT_DIR}/src/core/lib/surface/server.c
   ${PROJECT_ROOT_DIR}/src/core/lib/surface/validate_metadata.c
@@ -327,6 +381,7 @@ add_library(grpc STATIC
   ${PROJECT_ROOT_DIR}/src/core/lib/transport/timeout_encoding.c
   ${PROJECT_ROOT_DIR}/src/core/lib/transport/transport.c
   ${PROJECT_ROOT_DIR}/src/core/lib/transport/transport_op_string.c
+  ${PROJECT_ROOT_DIR}/src/core/lib/debug/trace.c
   ${PROJECT_ROOT_DIR}/src/core/ext/transport/chttp2/server/secure/server_secure_chttp2.c
   ${PROJECT_ROOT_DIR}/src/core/ext/transport/chttp2/transport/bin_decoder.c
   ${PROJECT_ROOT_DIR}/src/core/ext/transport/chttp2/transport/bin_encoder.c
@@ -341,6 +396,7 @@ add_library(grpc STATIC
   ${PROJECT_ROOT_DIR}/src/core/ext/transport/chttp2/transport/hpack_encoder.c
   ${PROJECT_ROOT_DIR}/src/core/ext/transport/chttp2/transport/hpack_parser.c
   ${PROJECT_ROOT_DIR}/src/core/ext/transport/chttp2/transport/hpack_table.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/transport/chttp2/transport/http2_settings.c
   ${PROJECT_ROOT_DIR}/src/core/ext/transport/chttp2/transport/huffsyms.c
   ${PROJECT_ROOT_DIR}/src/core/ext/transport/chttp2/transport/incoming_metadata.c
   ${PROJECT_ROOT_DIR}/src/core/ext/transport/chttp2/transport/parsing.c
@@ -349,6 +405,10 @@ add_library(grpc STATIC
   ${PROJECT_ROOT_DIR}/src/core/ext/transport/chttp2/transport/varint.c
   ${PROJECT_ROOT_DIR}/src/core/ext/transport/chttp2/transport/writing.c
   ${PROJECT_ROOT_DIR}/src/core/ext/transport/chttp2/alpn/alpn.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/http/client/http_client_filter.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/http/http_filters_plugin.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/http/message_compress/message_compress_filter.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/http/server/http_server_filter.c
   ${PROJECT_ROOT_DIR}/src/core/lib/http/httpcli_security_connector.c
   ${PROJECT_ROOT_DIR}/src/core/lib/security/context/security_context.c
   ${PROJECT_ROOT_DIR}/src/core/lib/security/credentials/composite/composite_credentials.c
@@ -371,53 +431,58 @@ add_library(grpc STATIC
   ${PROJECT_ROOT_DIR}/src/core/lib/security/transport/security_handshaker.c
   ${PROJECT_ROOT_DIR}/src/core/lib/security/transport/server_auth_filter.c
   ${PROJECT_ROOT_DIR}/src/core/lib/security/transport/tsi_error.c
-  ${PROJECT_ROOT_DIR}/src/core/lib/security/util/b64.c
   ${PROJECT_ROOT_DIR}/src/core/lib/security/util/json_util.c
   ${PROJECT_ROOT_DIR}/src/core/lib/surface/init_secure.c
-  ${PROJECT_ROOT_DIR}/src/core/lib/tsi/fake_transport_security.c
-  ${PROJECT_ROOT_DIR}/src/core/lib/tsi/ssl_transport_security.c
-  ${PROJECT_ROOT_DIR}/src/core/lib/tsi/transport_security.c
+  ${PROJECT_ROOT_DIR}/src/core/tsi/fake_transport_security.c
+  ${PROJECT_ROOT_DIR}/src/core/tsi/ssl_transport_security.c
+  ${PROJECT_ROOT_DIR}/src/core/tsi/transport_security.c
+  ${PROJECT_ROOT_DIR}/src/core/tsi/transport_security_adapter.c
   ${PROJECT_ROOT_DIR}/src/core/ext/transport/chttp2/server/chttp2_server.c
   ${PROJECT_ROOT_DIR}/src/core/ext/transport/chttp2/client/secure/secure_channel_create.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/client_channel/channel_connectivity.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/client_channel/client_channel.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/client_channel/client_channel_factory.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/client_channel/client_channel_plugin.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/client_channel/connector.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/client_channel/default_initial_connect_string.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/client_channel/http_connect_handshaker.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/client_channel/http_proxy.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/client_channel/initial_connect_string.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/client_channel/lb_policy.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/client_channel/lb_policy_factory.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/client_channel/lb_policy_registry.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/client_channel/parse_address.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/client_channel/proxy_mapper.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/client_channel/proxy_mapper_registry.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/client_channel/resolver.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/client_channel/resolver_factory.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/client_channel/resolver_registry.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/client_channel/subchannel.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/client_channel/subchannel_index.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/client_channel/uri_parser.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/channel_connectivity.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/client_channel.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/client_channel_factory.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/client_channel_plugin.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/connector.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/http_connect_handshaker.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/http_proxy.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/lb_policy.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/lb_policy_factory.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/lb_policy_registry.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/parse_address.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/proxy_mapper.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/proxy_mapper_registry.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/resolver.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/resolver_factory.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/resolver_registry.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/retry_throttle.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/subchannel.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/subchannel_index.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/uri_parser.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/deadline/deadline_filter.c
   ${PROJECT_ROOT_DIR}/src/core/ext/transport/chttp2/client/chttp2_connector.c
   ${PROJECT_ROOT_DIR}/src/core/ext/transport/chttp2/server/insecure/server_chttp2.c
   ${PROJECT_ROOT_DIR}/src/core/ext/transport/chttp2/server/insecure/server_chttp2_posix.c
   ${PROJECT_ROOT_DIR}/src/core/ext/transport/chttp2/client/insecure/channel_create.c
   ${PROJECT_ROOT_DIR}/src/core/ext/transport/chttp2/client/insecure/channel_create_posix.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/lb_policy/grpclb/grpclb.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/lb_policy/grpclb/grpclb_channel_secure.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/lb_policy/grpclb/load_balancer_api.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/lb_policy/grpclb/proto/grpc/lb/v1/load_balancer.pb.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/lb_policy/grpclb/client_load_reporting_filter.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/lb_policy/grpclb/grpclb.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/lb_policy/grpclb/grpclb_channel_secure.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/lb_policy/grpclb/grpclb_client_stats.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/lb_policy/grpclb/load_balancer_api.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/lb_policy/grpclb/proto/grpc/lb/v1/load_balancer.pb.c
   ${PROJECT_ROOT_DIR}/third_party/nanopb/pb_common.c
   ${PROJECT_ROOT_DIR}/third_party/nanopb/pb_decode.c
   ${PROJECT_ROOT_DIR}/third_party/nanopb/pb_encode.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/lb_policy/pick_first/pick_first.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/lb_policy/round_robin/round_robin.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/resolver/dns/native/dns_resolver.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/resolver/sockaddr/sockaddr_resolver.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/load_reporting/load_reporting.c
-  ${PROJECT_ROOT_DIR}/src/core/ext/load_reporting/load_reporting_filter.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/lb_policy/pick_first/pick_first.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/lb_policy/round_robin/round_robin.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/resolver/dns/c_ares/dns_resolver_ares.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/resolver/dns/c_ares/grpc_ares_ev_driver_posix.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/resolver/dns/c_ares/grpc_ares_wrapper.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/resolver/dns/native/dns_resolver.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/client_channel/resolver/sockaddr/sockaddr_resolver.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/load_reporting/load_reporting.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/load_reporting/load_reporting_filter.c
   ${PROJECT_ROOT_DIR}/src/core/ext/census/base_resources.c
   ${PROJECT_ROOT_DIR}/src/core/ext/census/context.c
   ${PROJECT_ROOT_DIR}/src/core/ext/census/gen/census.pb.c
@@ -426,12 +491,17 @@ add_library(grpc STATIC
   ${PROJECT_ROOT_DIR}/src/core/ext/census/grpc_filter.c
   ${PROJECT_ROOT_DIR}/src/core/ext/census/grpc_plugin.c
   ${PROJECT_ROOT_DIR}/src/core/ext/census/initialize.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/census/intrusive_hash_map.c
   ${PROJECT_ROOT_DIR}/src/core/ext/census/mlog.c
   ${PROJECT_ROOT_DIR}/src/core/ext/census/operation.c
   ${PROJECT_ROOT_DIR}/src/core/ext/census/placeholders.c
   ${PROJECT_ROOT_DIR}/src/core/ext/census/resource.c
   ${PROJECT_ROOT_DIR}/src/core/ext/census/trace_context.c
   ${PROJECT_ROOT_DIR}/src/core/ext/census/tracing.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/max_age/max_age_filter.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/message_size/message_size_filter.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/workarounds/workaround_cronet_compression_filter.c
+  ${PROJECT_ROOT_DIR}/src/core/ext/filters/workarounds/workaround_utils.c
   ${PROJECT_ROOT_DIR}/src/core/plugin_registry/grpc_plugin_registry.c
 )
 
@@ -442,20 +512,23 @@ target_include_directories(grpc
   PRIVATE ${PROTOBUF_ROOT_DIR}/src
   PRIVATE ${ZLIB_INCLUDE_DIR}
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/third_party/zlib
+  PRIVATE ${CARES_BUILD_INCLUDE_DIR}
+  PRIVATE ${CARES_INCLUDE_DIR}
+  PRIVATE ${CARES_PLATFORM_INCLUDE_DIR}
+  PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/third_party/cares/cares
+  PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/third_party/gflags/include
 )
 
 target_link_libraries(grpc
-  m  # math
   ${_gRPC_BASELIB_LIBRARIES}
   ${_gRPC_SSL_LIBRARIES}
   ${_gRPC_ZLIB_LIBRARIES}
+  ${_gRPC_CARES_LIBRARIES}
+  ${_gRPC_ALLTARGETS_LIBRARIES}
   gpr
 )
 
 foreach(_hdr
-  ${PROJECT_ROOT_DIR}/include/grpc/byte_buffer.h
-  ${PROJECT_ROOT_DIR}/include/grpc/byte_buffer_reader.h
-  ${PROJECT_ROOT_DIR}/include/grpc/compression.h
   ${PROJECT_ROOT_DIR}/include/grpc/grpc.h
   ${PROJECT_ROOT_DIR}/include/grpc/grpc_posix.h
   ${PROJECT_ROOT_DIR}/include/grpc/grpc_security_constants.h
@@ -463,12 +536,14 @@ foreach(_hdr
   ${PROJECT_ROOT_DIR}/include/grpc/slice.h
   ${PROJECT_ROOT_DIR}/include/grpc/slice_buffer.h
   ${PROJECT_ROOT_DIR}/include/grpc/status.h
+  ${PROJECT_ROOT_DIR}/include/grpc/support/workaround_list.h
   ${PROJECT_ROOT_DIR}/include/grpc/impl/codegen/byte_buffer_reader.h
   ${PROJECT_ROOT_DIR}/include/grpc/impl/codegen/compression_types.h
   ${PROJECT_ROOT_DIR}/include/grpc/impl/codegen/connectivity_state.h
   ${PROJECT_ROOT_DIR}/include/grpc/impl/codegen/exec_ctx_fwd.h
   ${PROJECT_ROOT_DIR}/include/grpc/impl/codegen/grpc_types.h
   ${PROJECT_ROOT_DIR}/include/grpc/impl/codegen/propagation_bits.h
+  ${PROJECT_ROOT_DIR}/include/grpc/impl/codegen/slice.h
   ${PROJECT_ROOT_DIR}/include/grpc/impl/codegen/status.h
   ${PROJECT_ROOT_DIR}/include/grpc/impl/codegen/atm.h
   ${PROJECT_ROOT_DIR}/include/grpc/impl/codegen/atm_gcc_atomic.h
@@ -477,7 +552,6 @@ foreach(_hdr
   ${PROJECT_ROOT_DIR}/include/grpc/impl/codegen/gpr_slice.h
   ${PROJECT_ROOT_DIR}/include/grpc/impl/codegen/gpr_types.h
   ${PROJECT_ROOT_DIR}/include/grpc/impl/codegen/port_platform.h
-  ${PROJECT_ROOT_DIR}/include/grpc/impl/codegen/slice.h
   ${PROJECT_ROOT_DIR}/include/grpc/impl/codegen/sync.h
   ${PROJECT_ROOT_DIR}/include/grpc/impl/codegen/sync_generic.h
   ${PROJECT_ROOT_DIR}/include/grpc/impl/codegen/sync_posix.h
@@ -512,11 +586,17 @@ target_include_directories(grpc_csharp_ext
   PRIVATE ${PROTOBUF_ROOT_DIR}/src
   PRIVATE ${ZLIB_INCLUDE_DIR}
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/third_party/zlib
+  PRIVATE ${CARES_BUILD_INCLUDE_DIR}
+  PRIVATE ${CARES_INCLUDE_DIR}
+  PRIVATE ${CARES_PLATFORM_INCLUDE_DIR}
+  PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/third_party/cares/cares
+  PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/third_party/gflags/include
 )
 
 find_library(log-lib log)
 
 target_link_libraries(grpc_csharp_ext
+  ${_gRPC_ALLTARGETS_LIBRARIES}
   grpc
   gpr
   ${log-lib}
@@ -527,4 +607,3 @@ install(TARGETS grpc_csharp_ext
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
-
