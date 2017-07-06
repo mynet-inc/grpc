@@ -125,8 +125,7 @@ GRPCAPI grpc_completion_queue *grpc_completion_queue_create(
 typedef void(*magic_for_debug_callback_funcptr)();
 GRPCAPI grpc_event grpc_completion_queue_next(grpc_completion_queue *cq,
                                               gpr_timespec deadline,
-                                              void *reserved,
-                                              magic_for_debug_callback_funcptr callback);
+                                              void *reserved);
 
 /** Blocks until an event with tag 'tag' is available, the completion queue is
     being shutdown or deadline is reached.
