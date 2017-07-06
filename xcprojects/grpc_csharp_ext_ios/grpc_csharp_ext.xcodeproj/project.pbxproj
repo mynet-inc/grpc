@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		FF60F03F1DFE928B0001ADA3 /* grpc_csharp_ext.c in Sources */ = {isa = PBXBuildFile; fileRef = FF60F03E1DFE928B0001ADA3 /* grpc_csharp_ext.c */; };
+		FFD6F2851F0E1A2E009D3BF8 /* grpc_csharp_ext.c in Sources */ = {isa = PBXBuildFile; fileRef = FFD6F2841F0E1A2E009D3BF8 /* grpc_csharp_ext.c */; };
 		FFF89B551DFE8E8500548460 /* adler32.c in Sources */ = {isa = PBXBuildFile; fileRef = FFF89B461DFE8E8500548460 /* adler32.c */; };
 		FFF89B561DFE8E8500548460 /* compress.c in Sources */ = {isa = PBXBuildFile; fileRef = FFF89B471DFE8E8500548460 /* compress.c */; };
 		FFF89B571DFE8E8500548460 /* crc32.c in Sources */ = {isa = PBXBuildFile; fileRef = FFF89B481DFE8E8500548460 /* crc32.c */; };
@@ -39,8 +39,8 @@
 
 /* Begin PBXFileReference section */
 		FF1BD4361DF045F200DD21F5 /* libgrpc_csharp_ext.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libgrpc_csharp_ext.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		FF60F03E1DFE928B0001ADA3 /* grpc_csharp_ext.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = grpc_csharp_ext.c; path = src/csharp/ext/grpc_csharp_ext.c; sourceTree = SOURCE_ROOT; };
 		FF7203421DF11E7600ECB92B /* grpc_csharp_ext.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = grpc_csharp_ext.pch; sourceTree = "<group>"; };
+		FFD6F2841F0E1A2E009D3BF8 /* grpc_csharp_ext.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = grpc_csharp_ext.c; path = ../../src/csharp/ext/grpc_csharp_ext.c; sourceTree = SOURCE_ROOT; };
 		FFF89B3B1DFE8E8500548460 /* crc32.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = crc32.h; path = ../../third_party/zlib/crc32.h; sourceTree = "<group>"; };
 		FFF89B3C1DFE8E8500548460 /* deflate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = deflate.h; path = ../../third_party/zlib/deflate.h; sourceTree = "<group>"; };
 		FFF89B3D1DFE8E8500548460 /* gzguts.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = gzguts.h; path = ../../third_party/zlib/gzguts.h; sourceTree = "<group>"; };
@@ -101,7 +101,7 @@
 		FF1BD4381DF045F200DD21F5 /* grpc_csharp_ext */ = {
 			isa = PBXGroup;
 			children = (
-				FF60F03E1DFE928B0001ADA3 /* grpc_csharp_ext.c */,
+				FFD6F2841F0E1A2E009D3BF8 /* grpc_csharp_ext.c */,
 			);
 			path = grpc_csharp_ext;
 			sourceTree = "<group>";
@@ -218,7 +218,7 @@
 				FFF89B5D1DFE8E8500548460 /* infback.c in Sources */,
 				FFF89B621DFE8E8500548460 /* uncompr.c in Sources */,
 				FFF89B5E1DFE8E8500548460 /* inffast.c in Sources */,
-				FF60F03F1DFE928B0001ADA3 /* grpc_csharp_ext.c in Sources */,
+				FFD6F2851F0E1A2E009D3BF8 /* grpc_csharp_ext.c in Sources */,
 				FFF89B551DFE8E8500548460 /* adler32.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
