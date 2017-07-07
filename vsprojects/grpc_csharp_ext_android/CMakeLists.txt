@@ -1,6 +1,16 @@
 cmake_minimum_required(VERSION 2.8)
 project(gprc_csharp_ext C CXX)
 
+if(UNIX)
+  if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    set(_gRPC_PLATFORM_LINUX ON)
+  elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(_gRPC_PLATFORM_MAC ON)
+  else()
+    set(_gRPC_PLATFORM_POSIX ON)
+  endif()
+endif()
+
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -std=c99")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
@@ -61,7 +71,9 @@ if(NOT DEFINED CMAKE_INSTALL_CMAKEDIR)
   set(CMAKE_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/gRPC")
 endif()
 
-if(_gRPC_PLATFORM_MAC)
+if (ANDROID)
+  set(_gRPC_ALLTARGETS_LIBRARIES ${CMAKE_DL_LIBS} m)
+elseif(_gRPC_PLATFORM_MAC)
   set(_gRPC_ALLTARGETS_LIBRARIES ${CMAKE_DL_LIBS} m pthread)
 elseif(UNIX)
   set(_gRPC_ALLTARGETS_LIBRARIES ${CMAKE_DL_LIBS} rt m pthread)
