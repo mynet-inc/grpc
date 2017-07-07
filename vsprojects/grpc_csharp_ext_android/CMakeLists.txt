@@ -1,17 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
-project(gprc_csharp_ext C)
+project(gprc_csharp_ext C CXX)
 
-enable_language(C)
-
-if(UNIX)
-  if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    set(_gRPC_PLATFORM_LINUX ON)
-  elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    set(_gRPC_PLATFORM_MAC ON)
-  else()
-    set(_gRPC_PLATFORM_POSIX ON)
-  endif()
-endif()
+set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -std=c99")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 set(PROJECT_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 
