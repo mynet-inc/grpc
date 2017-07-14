@@ -211,7 +211,7 @@ typedef struct cq_vtable {
                               grpc_cq_completion *storage),
                  void *done_arg, grpc_cq_completion *storage);
   grpc_event (*next)(grpc_completion_queue *cc, gpr_timespec deadline,
-                     void *reserved);
+                     void *reserved, magic_for_debug_callback_funcptr callback);
   grpc_event (*pluck)(grpc_completion_queue *cc, void *tag,
                       gpr_timespec deadline, void *reserved);
 } cq_vtable;
@@ -305,7 +305,7 @@ static void cq_end_op_for_pluck(grpc_exec_ctx *exec_ctx,
                                 void *done_arg, grpc_cq_completion *storage);
 
 static grpc_event cq_next(grpc_completion_queue *cc, gpr_timespec deadline,
-                          void *reserved);
+                          void *reserved, magic_for_debug_callback_funcptr callback);
 
 static grpc_event cq_pluck(grpc_completion_queue *cc, void *tag,
                            gpr_timespec deadline, void *reserved);
@@ -747,7 +747,7 @@ static void dump_pending_tags(grpc_completion_queue *cc) {}
 #endif
 
 static grpc_event cq_next(grpc_completion_queue *cc, gpr_timespec deadline,
-                          void *reserved) {
+                          void *reserved, magic_for_debug_callback_funcptr callback) {
   grpc_event ret;
   gpr_timespec now;
   cq_data *cqd = &cc->data;
@@ -782,7 +782,11 @@ static grpc_event cq_next(grpc_completion_queue *cc, gpr_timespec deadline,
       GRPC_EXEC_CTX_INITIALIZER(0, cq_is_next_finished, &is_finished_arg);
 
   for (;;) {
-    gpr_timespec iteration_deadline = deadline;
+	if (callback != NULL) {
+		callback();
+	}
+
+	gpr_timespec iteration_deadline = deadline;
 
     if (is_finished_arg.stolen_completion != NULL) {
       grpc_cq_completion *c = is_finished_arg.stolen_completion;
@@ -869,8 +873,9 @@ static grpc_event cq_next(grpc_completion_queue *cc, gpr_timespec deadline,
 }
 
 grpc_event grpc_completion_queue_next(grpc_completion_queue *cc,
-                                      gpr_timespec deadline, void *reserved) {
-  return cc->vtable->next(cc, deadline, reserved);
+                                      gpr_timespec deadline, void *reserved,
+                                      magic_for_debug_callback_funcptr callback) {
+  return cc->vtable->next(cc, deadline, reserved, callback);
 }
 
 static int add_plucker(grpc_completion_queue *cc, void *tag,
