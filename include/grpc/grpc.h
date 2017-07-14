@@ -122,7 +122,6 @@ GRPCAPI grpc_completion_queue *grpc_completion_queue_create(
 
     Callers must not call grpc_completion_queue_next and
     grpc_completion_queue_pluck simultaneously on the same completion queue. */
-typedef void(*magic_for_debug_callback_funcptr)();
 GRPCAPI grpc_event grpc_completion_queue_next(grpc_completion_queue *cq,
                                               gpr_timespec deadline,
                                               void *reserved);
