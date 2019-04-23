@@ -131,6 +131,26 @@ if [ "$target_all" = "1" ] || [ "$target_android" = "1" ]; then
     exit 1
   fi
 
+  # Android arm64
+  if [ "$arch_all" = 1 ] || [ "$arch_arm" = 1 ]; then
+    target=arm64-v8a
+    abi=arm64-v8a
+    work_dir="build_$target"
+
+    cd "$current_dir/vsprojects/grpc_csharp_ext_android"
+    rm -dfr "$work_dir"
+    mkdir "$work_dir"
+    cd "$work_dir"
+
+    cmake -DANDROID_ABI=$abi -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_TOOLCHAIN_FILE=../../../third_party/android-cmake/android.toolchain.cmake -DANDROID_NATIVE_API_LEVEL=19 -GNinja ..
+
+    ninja
+
+    rm -dfr "$OUTPUT_DIR/Android/$target"
+    mkdir -p "$OUTPUT_DIR/Android/$target"
+    cp ./libgrpc_csharp_ext.so "$OUTPUT_DIR/Android/$target/"
+  fi  # arm
+
   # Android arm-v7a
   if [ "$arch_all" = 1 ] || [ "$arch_arm" = 1 ]; then
     target=arm-v7a
